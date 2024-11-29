@@ -6,7 +6,7 @@ import net.minecraft.world.level.block.Block;
 import java.util.Map;
 
 @Data
-public class StructureBlock {
+public class MultiblockBlock {
 
     private Block block;
     Map<String, String> states;
