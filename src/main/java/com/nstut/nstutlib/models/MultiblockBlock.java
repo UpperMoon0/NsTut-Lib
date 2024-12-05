@@ -10,4 +10,9 @@ public class MultiblockBlock {
 
     private Block block;
     Map<String, String> states;
+
+    public MultiblockBlock(Block block, Map<String, String> states) {
+        this.block = block;
+        this.states = states;
+    }
 }

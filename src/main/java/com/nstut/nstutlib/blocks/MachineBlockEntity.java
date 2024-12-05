@@ -7,7 +7,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -24,7 +23,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
 
     // Stores the structure pattern for the multiblock machine
-    protected MultiblockPattern structurePattern;
+    protected MultiblockPattern multiblockPattern;
 
     @Getter
     private final int controllerHeight;
@@ -38,23 +37,14 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     // Indicates if the structure (multiblock) is valid or not
     protected boolean isStructureValid;
 
-    // Translation key for display purposes (used for GUI, etc.)
-    protected String translateKey;
-
     // Holds the current recipe being processed, if any
     protected Optional<? extends ModRecipe<?>> recipeHandler = Optional.empty();
 
     // Constructor for the machine block entity, sets its position and block state
     public MachineBlockEntity(BlockEntityType<? extends MachineBlockEntity> pType, BlockPos pPos, BlockState pBlockState, int controllerHeight) {
         super(pType, pPos, pBlockState);
-        this.structurePattern = getStructurePattern();
+        this.multiblockPattern = getMultiblockPattern();
         this.controllerHeight = controllerHeight;
-    }
-
-    // Provides the display name for this machine, used in GUIs or in-game messages
-    @Override
-    public @NotNull Component getDisplayName() {
-        return Component.translatable(translateKey);
     }
 
     // Loads persistent data from the NBT tag when the world loads
@@ -125,10 +115,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         return MachineBlock.FACING;
     }
 
-    // Abstract method to define the pattern for the multiblock structure
-    public abstract MultiblockPattern getStructurePattern();
-
     public boolean checkMultiblock(Level level, BlockPos blockPos, BlockState blockState) {
-        return structurePattern.check(level, blockPos, blockState, controllerHeight);
+        return multiblockPattern.check(level, blockPos, blockState, controllerHeight);
     }
 }

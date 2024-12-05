@@ -92,7 +92,7 @@ public class MultiblockPattern {
                         case NORTH -> {
                             currentBlockPos = new BlockPos(blockPos.getX() - patternCopy[0][0].length / 2 + x, blockPos.getY() - (controllerHeight - 1) + y, blockPos.getZ() + z);
 
-                            if (!level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock()) && patternCopy[patternCopy.length - 1 - y][z][x] != null) {
+                            if (patternCopy[patternCopy.length - 1 - y][z][x] != null && !level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock())) {
                                 if (debug)
                                     System.out.println("Invalid block at " + currentBlockPos + ". Expected " + patternCopy[patternCopy.length - 1 - y][z][x] + ", but found " + level.getBlockState(currentBlockPos));
                                 return false;
@@ -101,7 +101,7 @@ public class MultiblockPattern {
                         case SOUTH -> {
                             currentBlockPos = new BlockPos(blockPos.getX() - patternCopy[0][0].length / 2 + x, blockPos.getY() - (controllerHeight - 1) + y, blockPos.getZ() - (patternCopy[0].length - 1) + z);
 
-                            if (!level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock()) && patternCopy[patternCopy.length - 1 - y][z][x] != null) {
+                            if (patternCopy[patternCopy.length - 1 - y][z][x] != null && !level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock())) {
                                 if (debug)
                                     System.out.println("Invalid block at " + currentBlockPos + ". Expected " + patternCopy[patternCopy.length - 1 - y][z][x] + ", but found " + level.getBlockState(currentBlockPos));
                                 return false;
@@ -110,7 +110,7 @@ public class MultiblockPattern {
                         case EAST -> {
                             currentBlockPos = new BlockPos(blockPos.getX() - (patternCopy[0][0].length - 1) + x, blockPos.getY() - (controllerHeight - 1) + y, blockPos.getZ() - patternCopy[0].length / 2 + z);
 
-                            if (!level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock()) && patternCopy[patternCopy.length - 1 - y][z][x] != null) {
+                            if (patternCopy[patternCopy.length - 1 - y][z][x] != null && !level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock())) {
                                 if (debug)
                                     System.out.println("Invalid block at " + currentBlockPos + ". Expected " + patternCopy[patternCopy.length - 1 - y][z][x] + ", but found " + level.getBlockState(currentBlockPos));
                                 return false;
@@ -119,7 +119,7 @@ public class MultiblockPattern {
                         case WEST -> {
                             currentBlockPos = new BlockPos(blockPos.getX() + x, blockPos.getY() - (controllerHeight - 1) + y, blockPos.getZ() - patternCopy[0].length / 2 + z);
 
-                            if (!level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock()) && patternCopy[patternCopy.length - 1 - y][z][x] != null) {
+                            if (patternCopy[patternCopy.length - 1 - y][z][x] != null && !level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock())) {
                                 if (debug)
                                     System.out.println("Invalid block at " + currentBlockPos + ". Expected " + patternCopy[patternCopy.length - 1 - y][z][x] + ", but found " + level.getBlockState(currentBlockPos));
                                 return false;

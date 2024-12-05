@@ -258,14 +258,14 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     }
 
     public void assemble(IItemHandler outputSlots, IFluidHandler outputTanks) {
-        // Insert the item results into the cropId slots
+        // Insert the item results into the output slots
         if (recipe.getOutputItems() != null) {
             for (OutputItem outputItem : recipe.getOutputItems()) {
                 for (int i = 0; i < outputSlots.getSlots(); i++) {
                     ItemStack slotItemStack = outputSlots.getStackInSlot(i);
                     ItemStack outputItemStack = outputItem.getItemStack();
                     float chance = outputItem.getChance();
-                    boolean createItem = false;
+                    boolean createItem = true;
 
                     if (chance < 1.0f) {
                         createItem = Math.random() < chance;
@@ -284,7 +284,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             }
         }
 
-        // Insert the fluid results into the cropId tanks
+        // Insert the fluid results into the output tanks
         if (recipe.getFluidOutputs() != null) {
             for (FluidStack result : recipe.getFluidOutputs()) {
                 for (int i = 0; i < outputTanks.getTanks(); i++) {
