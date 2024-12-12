@@ -26,7 +26,13 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected MultiblockPattern multiblockPattern;
 
     @Getter
-    private final int controllerHeight;
+    private final int southOffsetX;
+
+    @Getter
+    private final int southOffsetY;
+
+    @Getter
+    private final int southOffsetZ;
 
     // Tracks the amount of energy consumed by the machine
     protected int energyConsumed;
@@ -41,10 +47,17 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected Optional<? extends ModRecipe<?>> recipeHandler = Optional.empty();
 
     // Constructor for the machine block entity, sets its position and block state
-    public MachineBlockEntity(BlockEntityType<? extends MachineBlockEntity> pType, BlockPos pPos, BlockState pBlockState, int controllerHeight) {
+    public MachineBlockEntity(BlockEntityType<? extends MachineBlockEntity> pType,
+                              BlockPos pPos,
+                              BlockState pBlockState,
+                              int southOffsetX,
+                              int southOffsetY,
+                              int southOffsetZ) {
         super(pType, pPos, pBlockState);
         this.multiblockPattern = getMultiblockPattern();
-        this.controllerHeight = controllerHeight;
+        this.southOffsetX = southOffsetX;
+        this.southOffsetY = southOffsetY;
+        this.southOffsetZ = southOffsetZ;
     }
 
     // Loads persistent data from the NBT tag when the world loads
@@ -116,6 +129,6 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     }
 
     public boolean checkMultiblock(Level level, BlockPos blockPos, BlockState blockState) {
-        return multiblockPattern.check(level, blockPos, blockState, controllerHeight);
+        return multiblockPattern.check(level, blockPos, blockState, southOffsetX, southOffsetY, southOffsetZ);
     }
 }

@@ -14,7 +14,7 @@ public class ItemRegistries {
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, NsTutLib.MOD_ID);
 
-    public static final RegistryObject<Item> SMART_HAMMER = ITEMS.register("smart_hammer", () -> new SmartHammer(new Item.Properties()));
+    public static final RegistryObject<Item> SMART_HAMMER = ITEMS.register("smart_hammer", () -> new SmartHammer(new Item.Properties().stacksTo(1)));
 
     public static final Set<RegistryObject<Item>> ITEM_SET = new HashSet<>() {{
         add(SMART_HAMMER);
