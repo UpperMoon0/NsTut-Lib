@@ -4,5 +4,5 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.nstut.nstutlib</groupId>
   <artifactId>MC-Mod-NsTut-Lib</artifactId>
-  <version>0.3</version>
+  <version>0.4</version>
 </project>
