@@ -4,8 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.nstutlib.NsTutLib;
-import com.nstut.nstutlib.blocks.MachineBlock;
-import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
 import net.minecraft.client.gui.GuiGraphics;
@@ -14,13 +12,10 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -109,42 +104,26 @@ public class SmartHammerScreen extends Screen {
         // Initialize pattern and mapping
         List<List<String>> pattern = new ArrayList<>();
         Map<String, MultiblockBlock> mapping = new HashMap<>();
-        char currentChar = 'b'; // Reserved "a" for air
-
-        // Capture the controller facing (default to NORTH)
-        Direction controllerFacing = Direction.NORTH;
-
-        // Calculate the rotation offset to align the controller to SOUTH
-        int rotationOffset = getRotationOffset(controllerFacing);
+        char currentChar = 'a';
 
         // Iterate over the area to capture block data
         for (int y = maxY; y >= minY; y--) {
             List<String> layer = new ArrayList<>();
-            for (int z = minZ; z <= maxZ; z++) { // Iterate in the correct order
+            for (int z = minZ; z <= maxZ; z++) {
                 StringBuilder row = new StringBuilder();
-                for (int x = maxX; x >= minX; x--) { // Reverse the order here to fix the rotation
+                for (int x = maxX; x >= minX; x--) {
                     BlockPos pos = new BlockPos(x, y, z);
                     BlockState state = level.getBlockState(pos);
                     String blockName = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(state.getBlock())).toString();
 
                     // Capture block states
                     Map<String, String> stateMap = state.getProperties().stream()
-                            .collect(Collectors.toMap(
+                            .collect(Collectors.toMap
+                                (
                                     Property::getName,
-                                    property -> {
-                                        if (property instanceof DirectionProperty directionProperty &&
-                                                directionProperty.getName().equals("facing") &&
-                                                directionProperty.getPossibleValues().contains(Direction.NORTH)) {
-                                            // Adjust the facing property based on the rotation
-                                            Direction originalFacing = state.getValue(directionProperty);
-                                            Direction newFacing = rotateDirection(originalFacing, rotationOffset);
-                                            return newFacing.getName();
-                                        } else {
-                                            // Preserve all other properties as-is
-                                            return state.getValue(property).toString();
-                                        }
-                                    }
-                            ));
+                                    property -> state.getValue(property).toString()
+                                )
+                            );
 
                     if (blockName.equals("minecraft:air")) {
                         row.append(" ");
@@ -178,7 +157,7 @@ public class SmartHammerScreen extends Screen {
             for (int z = 0; z < layer.size(); z++) {
                 String row = layer.get(z);
                 MultiblockBlock[] rowArray = new MultiblockBlock[row.length()];
-                for (int x = 0; x < row.length(); x++) {
+                for (int x = row.length() - 1; x >= 0; x--) {
                     String symbol = String.valueOf(row.charAt(x));
                     if (" ".equals(symbol)) {
                         rowArray[x] = null;
@@ -191,33 +170,12 @@ public class SmartHammerScreen extends Screen {
             blockArray[y] = layerArray;
         }
 
-        // Rotate the pattern to face SOUTH based on the controller's initial facing
+        // Create a MultiblockPattern object
         MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray);
-        multiblockPattern.rotate(rotationOffset);
 
         // Write to files using the new MultiblockPattern object
         writeJson(multiblockPattern);
         writeTxt(multiblockPattern);
-    }
-
-    private int getRotationOffset(Direction controllerFacing) {
-        return switch (controllerFacing) {
-            case SOUTH -> 0; // No rotation needed, already aligned to SOUTH
-            case WEST -> 1;  // 90 degrees clockwise to SOUTH
-            case NORTH -> 2; // 180 degrees to SOUTH
-            case EAST -> 3;  // 270 degrees clockwise to SOUTH
-            default -> 0;    // Default to no rotation (shouldn't happen)
-        };
-    }
-
-    private Direction rotateDirection(Direction original, int steps) {
-        if (!original.getAxis().isHorizontal()) {
-            return original; // Only rotate horizontal directions
-        }
-
-        Direction[] horizontalDirections = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
-        int index = (original.get2DDataValue() + steps) % horizontalDirections.length;
-        return horizontalDirections[index];
     }
 
     private void writeJson(MultiblockPattern multiblockPattern) {
