@@ -3,6 +3,7 @@ package com.nstut.nstutlib;
 import com.mojang.logging.LogUtils;
 import com.nstut.nstutlib.creative_tabs.CreativeTabRegistries;
 import com.nstut.nstutlib.items.ItemRegistries;
+import com.nstut.nstutlib.network.PacketRegistries;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
@@ -63,7 +64,7 @@ public class NsTutLib
 
     private void commonSetup(final FMLCommonSetupEvent event)
     {
-
+        PacketRegistries.register();
     }
 
     // Add the example block item to the building blocks tab

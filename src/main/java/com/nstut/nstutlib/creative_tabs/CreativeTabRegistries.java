@@ -20,6 +20,9 @@ public class CreativeTabRegistries {
                 for (RegistryObject<Item> i : ItemRegistries.ITEM_SET) {
                     output.accept(i.get());
                 }
+                if (NsTutLib.IS_DEV_ENV) {
+                    output.accept(ItemRegistries.STRUCTURE_SCANNER.get());
+                }
             })
             .title(Component.translatable("itemGroup.nstutlib"))
             .build());

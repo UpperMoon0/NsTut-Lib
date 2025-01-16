@@ -1,12 +1,10 @@
 package com.nstut.nstutlib.items;
 
 import com.mojang.logging.LogUtils;
-import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.blocks.MachineBlock;
 import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
-import com.nstut.nstutlib.views.SmartHammerScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,13 +39,6 @@ public class SmartHammer extends Item {
 
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
-        if (level.isClientSide && Minecraft.getInstance().hitResult != null
-                && Minecraft.getInstance().hitResult.getType() == HitResult.Type.MISS
-                && NsTutLib.IS_DEV_ENV) {
-            Minecraft.getInstance().setScreen(new SmartHammerScreen(level));
-            return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide());
-        }
-
         if (!level.isClientSide && Minecraft.getInstance().hitResult != null && Minecraft.getInstance().hitResult.getType() == HitResult.Type.BLOCK) {
             BlockHitResult blockHitResult = (BlockHitResult) Minecraft.getInstance().hitResult;
             BlockPos blockPos = blockHitResult.getBlockPos();

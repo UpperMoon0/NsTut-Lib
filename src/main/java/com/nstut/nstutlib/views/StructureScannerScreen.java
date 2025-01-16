@@ -6,6 +6,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
+import com.nstut.nstutlib.network.PacketRegistries;
+import com.nstut.nstutlib.network.StructureScannerC2SPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -14,6 +16,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -27,13 +30,10 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class SmartHammerScreen extends Screen {
-
-    private static final Logger LOGGER = Logger.getLogger(SmartHammerScreen.class.getName());
-
-    private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/smart_hammer.png");
-
+public class StructureScannerScreen extends Screen {
     private static final String SCRIPT_OUTPUT_PATH = FMLPaths.GAMEDIR.get().resolve("nstut_script_output").toString();
+    private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
+    private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
 
     private final Level level;
 
@@ -44,8 +44,8 @@ public class SmartHammerScreen extends Screen {
     private EditBox secondCornerY;
     private EditBox secondCornerZ;
 
-    public SmartHammerScreen(Level level) {
-        super(Component.literal("Debug Structure Analyzer"));
+    public StructureScannerScreen(Level level, ItemStack scannerItem) {
+        super(Component.literal("Structure Scanner"));
         this.level = level;
     }
 
@@ -56,28 +56,42 @@ public class SmartHammerScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        // First Corner
+        // Initialize input fields with the latest values
         this.firstCornerX = new EditBox(this.font, centerX - 70, centerY - 40, 40, 15, Component.literal("X"));
         this.firstCornerY = new EditBox(this.font, centerX - 20, centerY - 40, 40, 15, Component.literal("Y"));
         this.firstCornerZ = new EditBox(this.font, centerX + 30, centerY - 40, 40, 15, Component.literal("Z"));
-        this.addRenderableWidget(this.firstCornerX);
-        this.addRenderableWidget(this.firstCornerY);
-        this.addRenderableWidget(this.firstCornerZ);
-
-        // Second Corner
         this.secondCornerX = new EditBox(this.font, centerX - 70, centerY + 10, 40, 15, Component.literal("X"));
         this.secondCornerY = new EditBox(this.font, centerX - 20, centerY + 10, 40, 15, Component.literal("Y"));
         this.secondCornerZ = new EditBox(this.font, centerX + 30, centerY + 10, 40, 15, Component.literal("Z"));
+
+        // Set default values
+        this.firstCornerX.setValue("0");
+        this.firstCornerY.setValue("0");
+        this.firstCornerZ.setValue("0");
+        this.secondCornerX.setValue("0");
+        this.secondCornerY.setValue("0");
+        this.secondCornerZ.setValue("0");
+
+        this.addRenderableWidget(this.firstCornerX);
+        this.addRenderableWidget(this.firstCornerY);
+        this.addRenderableWidget(this.firstCornerZ);
         this.addRenderableWidget(this.secondCornerX);
         this.addRenderableWidget(this.secondCornerY);
         this.addRenderableWidget(this.secondCornerZ);
 
         // Save Button
         Button saveButton = Button.builder(Component.literal("Save"), this::onSave)
-                .pos(centerX - 50, centerY + 50)
-                .size(100, 20)
+                .pos(centerX - 60, centerY + 50)
+                .size(50, 20)
                 .build();
         this.addRenderableWidget(saveButton);
+
+        // Export Button
+        Button exportButton = Button.builder(Component.literal("Export"), this::onExport)
+                .pos(centerX + 10, centerY + 50)
+                .size(50, 20)
+                .build();
+        this.addRenderableWidget(exportButton);
 
         // Labels
         StringWidget firstCornerLabel = new StringWidget(centerX - 89, centerY - 60, 100, 20, Component.literal("First Corner"), this.font);
@@ -87,6 +101,22 @@ public class SmartHammerScreen extends Screen {
     }
 
     private void onSave(Button button) {
+        try {
+            int firstX = Integer.parseInt(this.firstCornerX.getValue());
+            int firstY = Integer.parseInt(this.firstCornerY.getValue());
+            int firstZ = Integer.parseInt(this.firstCornerZ.getValue());
+            int secondX = Integer.parseInt(this.secondCornerX.getValue());
+            int secondY = Integer.parseInt(this.secondCornerY.getValue());
+            int secondZ = Integer.parseInt(this.secondCornerZ.getValue());
+
+            // Send packet to the server with the updated corner values
+            PacketRegistries.sendToServer(new StructureScannerC2SPacket(firstX, firstY, firstZ, secondX, secondY, secondZ));
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Invalid input: " + e.getMessage());
+        }
+    }
+
+    private void onExport(Button button) {
         int x1 = Integer.parseInt(this.firstCornerX.getValue());
         int y1 = Integer.parseInt(this.firstCornerY.getValue());
         int z1 = Integer.parseInt(this.firstCornerZ.getValue());
@@ -119,10 +149,10 @@ public class SmartHammerScreen extends Screen {
                     // Capture block states
                     Map<String, String> stateMap = state.getProperties().stream()
                             .collect(Collectors.toMap
-                                (
-                                    Property::getName,
-                                    property -> state.getValue(property).toString()
-                                )
+                                    (
+                                            Property::getName,
+                                            property -> state.getValue(property).toString()
+                                    )
                             );
 
                     if (blockName.equals("minecraft:air")) {
@@ -178,6 +208,31 @@ public class SmartHammerScreen extends Screen {
         writeTxt(multiblockPattern);
     }
 
+    @Override
+    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        this.renderBackground(graphics);
+        RenderSystem.setShaderTexture(0, TEXTURE);
+        int screenHeight = 166;
+        int screenWidth = 176;
+        graphics.blit(TEXTURE, (this.width - screenWidth) / 2, (this.height - screenHeight) / 2, 0, 0, screenWidth, screenHeight);
+        super.render(graphics, mouseX, mouseY, partialTicks);
+        this.firstCornerX.render(graphics, mouseX, mouseY, partialTicks);
+        this.firstCornerY.render(graphics, mouseX, mouseY, partialTicks);
+        this.firstCornerZ.render(graphics, mouseX, mouseY, partialTicks);
+        this.secondCornerX.render(graphics, mouseX, mouseY, partialTicks);
+        this.secondCornerY.render(graphics, mouseX, mouseY, partialTicks);
+        this.secondCornerZ.render(graphics, mouseX, mouseY, partialTicks);
+    }
+
+    public void setCorners(int firstX, int firstY, int firstZ, int secondX, int secondY, int secondZ) {
+        this.firstCornerX.setValue(String.valueOf(firstX));
+        this.firstCornerY.setValue(String.valueOf(firstY));
+        this.firstCornerZ.setValue(String.valueOf(firstZ));
+        this.secondCornerX.setValue(String.valueOf(secondX));
+        this.secondCornerY.setValue(String.valueOf(secondY));
+        this.secondCornerZ.setValue(String.valueOf(secondZ));
+    }
+
     private void writeJson(MultiblockPattern multiblockPattern) {
         // Extract pattern and mapping from the MultiblockPattern instance
         MultiblockBlock[][][] pattern = multiblockPattern.getPattern();
@@ -189,9 +244,9 @@ public class SmartHammerScreen extends Screen {
 
         for (int y = pattern.length - 1; y >= 0; y--) {
             List<String> layer = new ArrayList<>();
-            for (int z = 0; z < pattern[y].length; z++) {
+            for (int x = pattern[0][0].length - 1; x >= 0; x--) {
                 StringBuilder row = new StringBuilder();
-                for (int x = 0; x < pattern[y][z].length; x++) {
+                for (int z = 0; z < pattern[0].length; z++) {
                     MultiblockBlock block = pattern[y][z][x];
                     if (block == null) {
                         row.append(" ");
@@ -221,15 +276,25 @@ public class SmartHammerScreen extends Screen {
 
         Map<String, Object> multiblockData = new HashMap<>();
         multiblockData.put("pattern", jsonPattern);
-        multiblockData.put("mapping", mapping.entrySet().stream().collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> {
-                    Map<String, Object> blockData = new HashMap<>();
-                    blockData.put("block", Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(entry.getValue().getBlock())).toString());
-                    blockData.put("states", entry.getValue().getStates());
-                    return blockData;
-                }
-        )));
+
+        // Modify the mapping output to match the required format
+        Map<String, String> formattedMapping = new LinkedHashMap<>();
+        for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
+            String blockStateString = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(entry.getValue().getBlock())).toString();
+
+            // Add block state properties
+            String blockStateProperties = entry.getValue().getStates().entrySet().stream()
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .collect(Collectors.joining(", "));
+
+            if (!blockStateProperties.isEmpty()) {
+                blockStateString += "[" + blockStateProperties + "]";
+            }
+
+            formattedMapping.put(entry.getKey(), blockStateString);
+        }
+
+        multiblockData.put("mapping", formattedMapping);
         multiblockData.put("symmetrical", true);
         jsonData.put("multiblock", multiblockData);
 
@@ -317,20 +382,5 @@ public class SmartHammerScreen extends Screen {
             LOGGER.severe("Failed to write TXT file: " + e.getMessage());
         }
     }
-
-    @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(graphics);
-        RenderSystem.setShaderTexture(0, TEXTURE);
-        int screenHeight = 166;
-        int screenWidth = 176;
-        graphics.blit(TEXTURE, (this.width - screenWidth) / 2, (this.height - screenHeight) / 2, 0, 0, screenWidth, screenHeight);
-        super.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerX.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerY.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerZ.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerX.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerY.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerZ.render(graphics, mouseX, mouseY, partialTicks);
-    }
 }
+
