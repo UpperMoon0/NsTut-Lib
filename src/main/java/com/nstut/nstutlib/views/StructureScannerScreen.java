@@ -313,7 +313,7 @@ public class StructureScannerScreen extends Screen {
         Map<String, MultiblockBlock> mapping = new LinkedHashMap<>();
         char currentChar = 'b';
 
-        // Populate the mapping
+        // Populate the mapping only with unique blocks
         for (MultiblockBlock[][] layer : pattern) {
             for (MultiblockBlock[] row : layer) {
                 for (MultiblockBlock block : row) {
@@ -327,13 +327,11 @@ public class StructureScannerScreen extends Screen {
         // Filter and map unique blocks to variable names
         for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
             MultiblockBlock block = entry.getValue();
-            String blockName = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(block.getBlock())).toString();
-            if (!filteredMapping.containsValue(blockName)) {
-                filteredMapping.put(entry.getKey(), blockName);
-            }
+            String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock()).toString();
+            filteredMapping.putIfAbsent(entry.getKey(), blockName); // Avoids duplicates
         }
 
-        // Start writing the multiblock pattern
+        // Write the multiblock pattern
         try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH + "\\structure_pattern.txt")) {
             writer.write("@Override\n");
             writer.write("public MultiblockPattern getMultiblockPattern() {\n");
@@ -343,17 +341,16 @@ public class StructureScannerScreen extends Screen {
             List<String> declarations = new ArrayList<>();
             for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
                 MultiblockBlock block = entry.getValue();
-                String blockName = ("Blocks." + block.getBlock().toString())
-                        .replace("Block{minecraft:", "")
-                        .replace("}", "")
+                String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock())
+                        .toString()
+                        .replace("minecraft:", "")
                         .toUpperCase()
                         .replace(":", "_");
                 String attributes = block.getStates().entrySet().stream()
-                        .map(e -> String.format("\"%s\", \"%s\"", e.getKey(), e.getValue()))
+                        .map(e -> "\"" + e.getKey() + "\", \"" + e.getValue() + "\"")
                         .collect(Collectors.joining(", "));
-                String blockDecl = String.format("%s = new MultiblockBlock(%s, Map.of(%s))",
-                        entry.getKey(), blockName, attributes);
-                declarations.add(blockDecl);
+                declarations.add(String.format("%s = new MultiblockBlock(Blocks.%s, Map.of(%s))",
+                        entry.getKey(), blockName, attributes));
             }
             writer.write(String.join(",\n    ", declarations) + ";\n\n");
 
@@ -362,7 +359,11 @@ public class StructureScannerScreen extends Screen {
             for (int y = pattern.length - 1; y >= 0; y--) {
                 writer.write("        {\n");
                 for (MultiblockBlock[] row : pattern[y]) {
-                    String formattedRow = Arrays.stream(row)
+                    // Reverse the row
+                    List<MultiblockBlock> reversedRow = Arrays.asList(row.clone());
+                    Collections.reverse(reversedRow);
+
+                    String formattedRow = reversedRow.stream()
                             .map(block -> block == null ? "null" : mapping.entrySet().stream()
                                     .filter(entry -> entry.getValue().equals(block))
                                     .map(Map.Entry::getKey)
