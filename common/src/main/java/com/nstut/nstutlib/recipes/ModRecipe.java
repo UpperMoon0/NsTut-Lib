@@ -2,10 +2,9 @@ package com.nstut.nstutlib.recipes;
 
 import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import dev.architectury.fluid.FluidStack; // Replaced Forge FluidStack
-import dev.architectury.transfer.TransferAction; // Corrected import
-import dev.architectury.transfer.item.ItemTransfer; // Corrected import
-import dev.architectury.transfer.fluid.FluidTransfer; // Corrected import
-import dev.architectury.transfer.fluid.FluidStorage; // Added import
+import dev.architectury.transfer.api.fluid.FluidStorage; // Corrected import
+import dev.architectury.transfer.api.item.ItemTransfer; // Corrected import
+import dev.architectury.transfer.api.transaction.TransactionContext; // Corrected import for TransferAction
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
@@ -272,10 +271,10 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     for (int i = 0; i < outputTank.getTankCount(); i++) { // Corrected method call
                         FluidStack subFluidStack = outputTank.getFluidInTank(i);
                         if (subFluidStack.isEmpty()) {
-                            outputTank.fill(fluidToFill, TransferAction.EXECUTE); // Corrected method call
+                            outputTank.fill(fluidToFill, TransactionContext.create()); // Corrected method call
                             break;
                         } else if (subFluidStack.getFluid().equals(fluidToFill.getFluid()) && subFluidStack.getAmount() + fluidToFill.getAmount() <= outputTank.getTankCapacity(i)) {
-                            outputTank.fill(fluidToFill, TransferAction.EXECUTE); // Corrected method call
+                            outputTank.fill(fluidToFill, TransactionContext.create()); // Corrected method call
                             break;
                         }
                     }
@@ -326,9 +325,9 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                         if (tankFluid.getFluid().equals(entry.getKey())) {
                             if (tankFluid.getAmount() <= remaining) {
                                 remaining -= tankFluid.getAmount();
-                                inputTank.drain(tankFluid.copy().withAmount(tankFluid.getAmount()), TransferAction.EXECUTE); // Corrected method call
+                                inputTank.drain(tankFluid.copy().withAmount(tankFluid.getAmount()), TransactionContext.create()); // Corrected method call
                             } else {
-                                inputTank.drain(tankFluid.copy().withAmount(remaining), TransferAction.EXECUTE); // Corrected method call
+                                inputTank.drain(tankFluid.copy().withAmount(remaining), TransactionContext.create()); // Corrected method call
                                 remaining = 0;
                             }
                         }
