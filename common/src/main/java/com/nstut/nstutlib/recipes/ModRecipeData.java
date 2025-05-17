@@ -3,7 +3,7 @@ package com.nstut.nstutlib.recipes;
 import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.fluids.FluidStack;
+import dev.architectury.fluid.FluidStack; // Replaced Forge FluidStack
 
 import java.io.*;
 

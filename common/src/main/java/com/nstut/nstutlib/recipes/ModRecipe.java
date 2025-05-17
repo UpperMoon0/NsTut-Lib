@@ -1,11 +1,10 @@
 package com.nstut.nstutlib.recipes;
 
-import dev.architectury.fluid.FluidStack; // Replace Forge FluidStack
-import dev.architectury.hooks.fluid.FluidStackHooks; // For FluidStack NBT
+import com.nstut.nstutlib.blocks.MachineBlockEntity;
+import dev.architectury.fluid.FluidStack; // Replaced Forge FluidStack
 import dev.architectury.transfer.TransferAction;
 import dev.architectury.transfer.item.ItemTransfer; // Replace Forge IItemHandler
 import dev.architectury.transfer.fluid.FluidTransfer; // Replace Forge IFluidHandler
-import lombok.Getter;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
@@ -16,22 +15,22 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
-import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Container>, RecipeFactory<T> {
     protected final ResourceLocation id;
-    @Getter
-    protected final ModRecipeData recipe;
+    protected final ModRecipeData recipeData;
     private final RecipeSerializer<T> serializer;
     private final RecipeType<T> type;
 
-    protected ModRecipe(ResourceLocation id, ModRecipeData recipe, RecipeSerializer<T> serializer, RecipeType<T> type) {
+    protected ModRecipe(ResourceLocation id, ModRecipeData recipeData, RecipeSerializer<T> serializer, RecipeType<T> type) {
         this.id = id;
-        this.recipe = recipe;
+        this.recipeData = recipeData;
         this.serializer = serializer;
         this.type = type;
     }
@@ -47,34 +46,34 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     protected abstract T createInstance(ResourceLocation id, ModRecipeData recipeContainer);
 
     @Override
-    public @NotNull RecipeSerializer<T> getSerializer() {
+    public RecipeSerializer<T> getSerializer() {
         return serializer;
     }
 
     @Override
-    public @NotNull RecipeType<T> getType() {
+    public RecipeType<T> getType() {
         return type;
     }
 
     @Override
-    public @NotNull ResourceLocation getId() {
+    public ResourceLocation getId() {
         return id;
     }
 
     public List<IngredientItem> getItemIngredients() {
-        return List.of(recipe.getIngredientItems());
+        return List.of(recipeData.getIngredientItems());
     }
 
     public List<FluidStack> getFluidIngredients() {
-        return List.of(recipe.getFluidIngredients());
+        return List.of(recipeData.getFluidIngredients());
     }
 
     public List<OutputItem> getItemOutputs() {
-        return List.of(recipe.getOutputItems());
+        return List.of(recipeData.getOutputItems());
     }
 
     public List<FluidStack> getFluidOutputs() {
-        return List.of(recipe.getFluidOutputs());
+        return List.of(recipeData.getFluidOutputs());
     }
 
     /**
@@ -88,43 +87,11 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
      * @return               True if the inputs match the recipe, false otherwise
      */
     public boolean recipeMatch(Container inputSlots, List<dev.architectury.transfer.fluid.FluidHandler> inputTanks, Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
-        Map<Item, Integer> itemMap = new HashMap<>();
-        Map<Fluid, Integer> fluidMap = new HashMap<>();
-        boolean itemsMatch = false;
-        boolean fluidsMatch = false;
+        boolean itemsMatch = itemIngredientsMatch(inputSlots);
+        boolean fluidsMatch = fluidIngredientsMatch(inputTanks);
+        boolean outputSpace = outputSpaceAvailable(outputSlots, outputTanks);
 
-        // Check if the cropId slots and tanks have enough space for the result
-        if (!outputSpaceAvailable(outputSlots, outputTanks)) {
-            return false;
-        }
-
-        // Validate item ingredients
-        if (recipe.getIngredientItems() != null) {
-            // Store input items in a map to count quantities
-            for (int i = 0; i < inputSlots.getSlots(); i++) {
-                ItemStack stack = inputSlots.getStackInSlot(i);
-                int newQuantity = itemMap.getOrDefault(stack.getItem(), 0) + stack.getCount();
-                itemMap.put(stack.getItem(), newQuantity);
-            }
-            // Check if the input slots have enough of the required items
-            itemsMatch = itemsMatch(recipe.getIngredientItems(), itemMap);
-        }
-
-        // Validate fluid ingredients
-        if (recipe.getFluidIngredients() != null) {
-            // Store input fluids in a map to count amounts
-            for (dev.architectury.transfer.fluid.FluidHandler inputTank : inputTanks) {
-                for (int i = 0; i < inputTank.getTanks(); i++) {
-                    FluidStack fluidStack = inputTank.getFluidInTank(i);
-                    int newAmount = fluidMap.getOrDefault(fluidStack.getFluid(), 0) + fluidStack.getAmount();
-                    fluidMap.put(fluidStack.getFluid(), newAmount);
-                }
-            }
-            // Check if the input tanks have enough of the required fluids
-            fluidsMatch = fluidsMatch(recipe.getFluidIngredients(), fluidMap);
-        }
-
-        return itemsMatch && fluidsMatch;
+        return itemsMatch && fluidsMatch && outputSpace;
     }
 
     /**
@@ -180,6 +147,9 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
      * @return            True if there is enough space for the result, false otherwise
      */
     private boolean outputSpaceAvailable(Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
+        boolean itemOutputSpace = true;
+        boolean fluidOutputSpace = true;
+
         if (outputSlots != null) {
             int availableEmptyItemSlots = 0;
             int availableItemSpace;
@@ -193,7 +163,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             }
 
             // Check if the item cropId slots have enough space for the result
-            for (OutputItem outputItem : recipe.getOutputItems()) {
+            for (OutputItem outputItem : recipeData.getOutputItems()) {
                 availableItemSpace = 0;
                 ItemStack itemStack = outputItem.getItemStack();
                 int maxStackSize = itemStack.getMaxStackSize();
@@ -211,7 +181,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
                 // Check if the total available space is sufficient for the result item
                 if (totalAvailableSpace < itemStack.getCount()) {
-                    return false;
+                    itemOutputSpace = false;
+                    break;
                 }
 
                 // Update the remaining empty slots for the next result item
@@ -237,7 +208,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             }
 
             // Check if the fluid tanks have enough space for the result fluids
-            for (FluidStack result : recipe.getFluidOutputs()) {
+            for (FluidStack result : recipeData.getFluidOutputs()) {
                 availableFluidSpace = 0;
 
                 for (dev.architectury.transfer.fluid.FluidHandler outputTank : outputTanks) {
@@ -251,7 +222,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
                 // Check if the total available space is sufficient for the result fluid
                 if (availableEmptyTankSpace + availableFluidSpace < result.getAmount()) {
-                    return false;
+                    fluidOutputSpace = false;
+                    break;
                 }
 
                 // Update the remaining empty tanks for the next result fluid
@@ -262,39 +234,37 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             }
         }
 
-        return true;
+        return itemOutputSpace && fluidOutputSpace;
     }
 
     public void assemble(Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
-        // Insert the item results into the output slots
-        if (recipe.getOutputItems() != null) {
-            for (OutputItem outputItem : recipe.getOutputItems()) {
-                for (int i = 0; i < outputSlots.getSlots(); i++) {
-                    ItemStack slotItemStack = outputSlots.getStackInSlot(i);
-                    ItemStack outputItemStack = outputItem.getItemStack();
-                    float chance = outputItem.getChance();
-                    boolean createItem = true;
+        for (int i = 0; i < recipeData.getOutputItems().length; i++) {
+            OutputItem outputItem = recipeData.getOutputItems()[i];
+            for (int j = 0; j < outputSlots.getSlots(); j++) {
+                ItemStack slotItemStack = outputSlots.getStackInSlot(j);
+                ItemStack outputItemStack = outputItem.getItemStack();
+                float chance = outputItem.getChance();
+                boolean createItem = true;
 
-                    if (chance < 1.0f) {
-                        createItem = Math.random() < chance;
-                    }
+                if (chance < 1.0f) {
+                    createItem = Math.random() < chance;
+                }
 
-                    if (slotItemStack.isEmpty() && createItem) {
-                        ItemTransfer.insertItem(outputSlots, outputItemStack.copy(), i);
-                        break;
-                    } else if (slotItemStack.getItem().equals(outputItemStack.getItem())
-                            && slotItemStack.getCount() < slotItemStack.getMaxStackSize()
-                            && createItem) {
-                        slotItemStack.grow(outputItemStack.getCount());
-                        break;
-                    }
+                if (slotItemStack.isEmpty() && createItem) {
+                    ItemTransfer.insertItem(outputSlots, outputItemStack.copy(), j);
+                    break;
+                } else if (slotItemStack.getItem().equals(outputItemStack.getItem())
+                        && slotItemStack.getCount() < slotItemStack.getMaxStackSize()
+                        && createItem) {
+                    slotItemStack.grow(outputItemStack.getCount());
+                    break;
                 }
             }
         }
 
         // Insert the fluid results into the output tanks
-        if (recipe.getFluidOutputs() != null) {
-            for (FluidStack result : recipe.getFluidOutputs()) {
+        if (recipeData.getFluidOutputs() != null) {
+            for (FluidStack result : recipeData.getFluidOutputs()) {
                 for (dev.architectury.transfer.fluid.FluidHandler outputTank : outputTanks) {
                     FluidStack fluidToFill = result.copy();
                     for (int i = 0; i < outputTank.getTanks(); i++) {
@@ -313,39 +283,32 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     }
 
     public void consumeIngredients(Container inputSlots, List<dev.architectury.transfer.fluid.FluidHandler> inputTanks) {
-        // Consume the required items
-        if (recipe.getIngredientItems() != null) {
-            Map<Item, Integer> requiredItemMap = new HashMap<>();
-            for (IngredientItem ingredientItem : recipe.getIngredientItems()) {
-                ItemStack itemStack = ingredientItem.getItemStack();
-                requiredItemMap.put(itemStack.getItem(), requiredItemMap.getOrDefault(itemStack.getItem(), 0) + itemStack.getCount());
-            }
-
-            for (Map.Entry<Item, Integer> entry : requiredItemMap.entrySet()) {
-                int remaining = entry.getValue();
-                for (int i = 0; i < inputSlots.getSlots() && remaining > 0; i++) {
-                    ItemStack slotStack = inputSlots.getStackInSlot(i);
-                    if (slotStack.getItem().equals(entry.getKey())) {
-                        int ingredientIndex = recipe.getIngredientIndex(slotStack.getItem());
-                        if (ingredientIndex != -1 && !recipe.getIngredientItems()[ingredientIndex].isConsumable()) {
-                            continue;
-                        }
-                        if (slotStack.getCount() <= remaining) {
-                            remaining -= slotStack.getCount();
-                            inputSlots.extractItem(i, slotStack.getCount(), false);
-                        } else {
-                            inputSlots.extractItem(i, remaining, false);
-                            remaining = 0;
-                        }
+        // Consume items
+        for (IngredientItem ingredientItem : recipeData.getIngredientItems()) {
+            ItemStack itemStack = ingredientItem.getItemStack();
+            for (int i = 0; i < inputSlots.getSlots(); i++) {
+                ItemStack slotStack = inputSlots.getStackInSlot(i);
+                if (slotStack.getItem().equals(itemStack.getItem())) {
+                    int ingredientIndex = recipeData.getIngredientIndex(slotStack.getItem());
+                    if (ingredientIndex != -1 && !recipeData.getIngredientItems()[ingredientIndex].isConsumable()) {
+                        continue;
+                    }
+                    if (slotStack.getCount() <= itemStack.getCount()) {
+                        itemStack.grow(-slotStack.getCount());
+                        inputSlots.extractItem(i, slotStack.getCount(), false);
+                    } else {
+                        inputSlots.extractItem(i, itemStack.getCount(), false);
+                        itemStack.setCount(0);
+                        break;
                     }
                 }
             }
         }
 
         // Consume the required fluids
-        if (recipe.getFluidIngredients() != null) {
+        if (recipeData.getFluidIngredients() != null) {
             Map<Fluid, Integer> requiredFluidMap = new HashMap<>();
-            for (FluidStack fluidInput : recipe.getFluidIngredients()) {
+            for (FluidStack fluidInput : recipeData.getFluidIngredients()) {
                 requiredFluidMap.put(fluidInput.getFluid(), requiredFluidMap.getOrDefault(fluidInput.getFluid(), 0) + fluidInput.getAmount());
             }
 
@@ -379,7 +342,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
      * @return The total energy cost of the recipe
      */
     public int getTotalEnergy() {
-        return recipe.getTotalEnergy();
+        return recipeData.getTotalEnergy();
     }
 
     // Methods not used by BiotechRecipe, overridden to return default values

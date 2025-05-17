@@ -1,27 +1,36 @@
 package com.nstut.nstutlib;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
+import com.electronwill.nightconfig.core.ConfigSpec;
+import com.electronwill.nightconfig.core.conversion.Path;
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.platform.Platform;
+import dev.architectury.registry.registries.Registrar;
+import dev.architectury.registry.registries.RegistrySupplier;
+import net.minecraft.world.item.CreativeModeTab;
 
-@Mod.EventBusSubscriber(modid = NsTutLib.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config
 {
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+    private static final ConfigSpec.Builder BUILDER = new ConfigSpec.Builder();
 
-    private static final ForgeConfigSpec.BooleanValue IS_DEV_ENV = BUILDER
+    @Path("isDevEnv")
+    private static final ConfigSpec.BooleanValue IS_DEV_ENV = BUILDER
             .comment("Whether the mod is running in a development environment")
             .define("isDevEnv", false);
 
-    static final ForgeConfigSpec SPEC = BUILDER.build();
+    static final ConfigSpec SPEC = BUILDER.build();
 
     public static boolean isDevEnv;
 
-    @SubscribeEvent
-    static void onLoad(final ModConfigEvent event)
+    static void onLoad()
     {
         isDevEnv = IS_DEV_ENV.get();
         NsTutLib.IS_DEV_ENV = isDevEnv;
+    }
+
+    public static void register() {
+        LifecycleEvent.SETUP.register(() -> {
+            isDevEnv = IS_DEV_ENV.get();
+            NsTutLib.IS_DEV_ENV = isDevEnv;
+        });
     }
 }
