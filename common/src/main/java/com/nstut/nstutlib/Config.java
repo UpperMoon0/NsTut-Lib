@@ -7,6 +7,7 @@ import dev.architectury.platform.Platform;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.world.item.CreativeModeTab;
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 
 public class Config
 {
@@ -23,6 +24,15 @@ public class Config
 
     static void onLoad()
     {
+        final CommentedFileConfig configData = CommentedFileConfig.builder(Platform.getConfigFolder().resolve("nstutlib.toml"))
+                .sync()
+                .autosave()
+                .writingMode(com.electronwill.nightconfig.core.io.WritingMode.REPLACE)
+                .build();
+
+        configData.load();
+        SPEC.setConfig(configData);
+
         isDevEnv = IS_DEV_ENV.get();
         NsTutLib.IS_DEV_ENV = isDevEnv;
     }
