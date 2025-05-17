@@ -2,9 +2,10 @@ package com.nstut.nstutlib.recipes;
 
 import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import dev.architectury.fluid.FluidStack; // Replaced Forge FluidStack
-import dev.architectury.transfer.TransferAction;
-import dev.architectury.transfer.item.ItemTransfer; // Replace Forge IItemHandler
-import dev.architectury.transfer.fluid.FluidTransfer; // Replace Forge IFluidHandler
+import dev.architectury.transfer.transfer.TransferAction; // Corrected import
+import dev.architectury.transfer.transfer.item.ItemTransfer; // Corrected import
+import dev.architectury.transfer.transfer.fluid.FluidTransfer; // Corrected import
+import dev.architectury.transfer.transfer.fluid.FluidHandler; // Added import
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
@@ -15,6 +16,7 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
+import org.jetbrains.annotations.NotNull; // Added import
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -86,7 +88,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
      * @param outputTanks    The fluid cropId tanks
      * @return               True if the inputs match the recipe, false otherwise
      */
-    public boolean recipeMatch(Container inputSlots, List<dev.architectury.transfer.fluid.FluidHandler> inputTanks, Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
+    public boolean recipeMatch(Container inputSlots, List<FluidHandler> inputTanks, Container outputSlots, List<FluidHandler> outputTanks) {
         boolean itemsMatch = itemIngredientsMatch(inputSlots);
         boolean fluidsMatch = fluidIngredientsMatch(inputTanks);
         boolean outputSpace = outputSpaceAvailable(outputSlots, outputTanks);
@@ -146,7 +148,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
      * @param outputTanks The fluid cropId tanks
      * @return            True if there is enough space for the result, false otherwise
      */
-    private boolean outputSpaceAvailable(Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
+    private boolean outputSpaceAvailable(Container outputSlots, List<FluidHandler> outputTanks) {
         boolean itemOutputSpace = true;
         boolean fluidOutputSpace = true;
 
@@ -198,8 +200,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             int availableFluidSpace;
 
             // Calculate the total available empty space for fluids
-            for (dev.architectury.transfer.fluid.FluidHandler outputTank : outputTanks) {
-                for (int i = 0; i < outputTank.getTanks(); i++) {
+            for (FluidHandler outputTank : outputTanks) {
+                for (int i = 0; i < outputTank.getTankCount(); i++) { // Corrected method call
                     FluidStack subFluidStack = outputTank.getFluidInTank(i);
                     if (subFluidStack.isEmpty()) {
                         availableEmptyTankSpace += outputTank.getTankCapacity(i);
@@ -211,8 +213,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             for (FluidStack result : recipeData.getFluidOutputs()) {
                 availableFluidSpace = 0;
 
-                for (dev.architectury.transfer.fluid.FluidHandler outputTank : outputTanks) {
-                    for (int i = 0; i < outputTank.getTanks(); i++) {
+                for (FluidHandler outputTank : outputTanks) {
+                    for (int i = 0; i < outputTank.getTankCount(); i++) { // Corrected method call
                         FluidStack subFluidStack = outputTank.getFluidInTank(i);
                         if (!subFluidStack.isEmpty() && subFluidStack.getFluid().equals(result.getFluid())) {
                             availableFluidSpace += (outputTank.getTankCapacity(i) - subFluidStack.getAmount());
@@ -237,7 +239,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         return itemOutputSpace && fluidOutputSpace;
     }
 
-    public void assemble(Container outputSlots, List<dev.architectury.transfer.fluid.FluidHandler> outputTanks) {
+    public void assemble(Container outputSlots, List<FluidHandler> outputTanks) {
         for (int i = 0; i < recipeData.getOutputItems().length; i++) {
             OutputItem outputItem = recipeData.getOutputItems()[i];
             for (int j = 0; j < outputSlots.getSlots(); j++) {
@@ -265,15 +267,15 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         // Insert the fluid results into the output tanks
         if (recipeData.getFluidOutputs() != null) {
             for (FluidStack result : recipeData.getFluidOutputs()) {
-                for (dev.architectury.transfer.fluid.FluidHandler outputTank : outputTanks) {
+                for (FluidHandler outputTank : outputTanks) {
                     FluidStack fluidToFill = result.copy();
-                    for (int i = 0; i < outputTank.getTanks(); i++) {
+                    for (int i = 0; i < outputTank.getTankCount(); i++) { // Corrected method call
                         FluidStack subFluidStack = outputTank.getFluidInTank(i);
                         if (subFluidStack.isEmpty()) {
-                            FluidTransfer.fill(outputTank, fluidToFill, TransferAction.EXECUTE);
+                            outputTank.fill(fluidToFill, TransferAction.EXECUTE); // Corrected method call
                             break;
                         } else if (subFluidStack.getFluid().equals(fluidToFill.getFluid()) && subFluidStack.getAmount() + fluidToFill.getAmount() <= outputTank.getTankCapacity(i)) {
-                            FluidTransfer.fill(outputTank, fluidToFill, TransferAction.EXECUTE);
+                            outputTank.fill(fluidToFill, TransferAction.EXECUTE); // Corrected method call
                             break;
                         }
                     }
@@ -282,7 +284,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
     }
 
-    public void consumeIngredients(Container inputSlots, List<dev.architectury.transfer.fluid.FluidHandler> inputTanks) {
+    public void consumeIngredients(Container inputSlots, List<FluidHandler> inputTanks) {
         // Consume items
         for (IngredientItem ingredientItem : recipeData.getIngredientItems()) {
             ItemStack itemStack = ingredientItem.getItemStack();
@@ -314,19 +316,19 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
             for (Map.Entry<Fluid, Integer> entry : requiredFluidMap.entrySet()) {
                 int remaining = entry.getValue();
-                for (dev.architectury.transfer.fluid.FluidHandler inputTank : inputTanks) {
+                for (FluidHandler inputTank : inputTanks) {
                     if (remaining <= 0) {
                         break;
                     }
 
-                    for (int i = 0; i < inputTank.getTanks() && remaining > 0; i++) {
+                    for (int i = 0; i < inputTank.getTankCount() && remaining > 0; i++) { // Corrected method call
                         FluidStack tankFluid = inputTank.getFluidInTank(i);
                         if (tankFluid.getFluid().equals(entry.getKey())) {
                             if (tankFluid.getAmount() <= remaining) {
                                 remaining -= tankFluid.getAmount();
-                                inputTank.drain(tankFluid.getAmount(), FluidTransfer.FluidAction.EXECUTE);
+                                inputTank.drain(tankFluid.copy().withAmount(tankFluid.getAmount()), TransferAction.EXECUTE); // Corrected method call
                             } else {
-                                inputTank.drain(remaining, FluidTransfer.FluidAction.EXECUTE);
+                                inputTank.drain(tankFluid.copy().withAmount(remaining), TransferAction.EXECUTE); // Corrected method call
                                 remaining = 0;
                             }
                         }
@@ -354,13 +356,13 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     @SuppressWarnings("NullableProblems")
     @Override
     public  ItemStack assemble(@NotNull Container pContainer, @NotNull RegistryAccess pRegistryAccess) {
-        return null;
+        return ItemStack.EMPTY; // Return empty item stack instead of null
     }
 
     @SuppressWarnings("NullableProblems")
     @Override
     public ItemStack getResultItem(@NotNull RegistryAccess pRegistryAccess) {
-        return null;
+        return ItemStack.EMPTY; // Return empty item stack instead of null
     }
 
     @Override
