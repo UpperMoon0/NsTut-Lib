@@ -4,78 +4,56 @@ import com.mojang.logging.LogUtils;
 import com.nstut.nstutlib.creative_tabs.CreativeTabRegistries;
 import com.nstut.nstutlib.items.ItemRegistries;
 import com.nstut.nstutlib.network.PacketRegistries;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.client.ClientLifecycleEvent; // Added for CLIENT_SETUP
+// import dev.architectury.event.events.common.CreativeModeTabEvent; // Example for creative tabs if needed later
 import org.slf4j.Logger;
 
-// The value here should match an entry in the META-INF/mods.toml file
-@Mod(NsTutLib.MOD_ID)
 public class NsTutLib
 {
-    // Define mod id in a common place for everything to reference
     public static final String MOD_ID = "nstutlib";
-    // Define a boolean to check if the mod is in development environment
     public static boolean IS_DEV_ENV;
-    // Directly reference a slf4j logger
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public NsTutLib(FMLJavaModLoadingContext context)
+    public static void init()
     {
-        IEventBus modEventBus = context.getModEventBus();
+        // Load config
+        Config.onLoad(); // Ensure config is loaded; Config.register() also hooks into LifecycleEvent.SETUP
 
-        // Register the commonSetup method for modloading
-        modEventBus.addListener(this::commonSetup);
+        // Register items and creative tabs
+        // These methods will need to be adapted in their respective classes to use Architectury's registration
+        // ItemRegistries.register(); // Commented out for now
+        // CreativeTabRegistries.register(); // Commented out for now
 
-        // Register the Deferred Register to the mod event bus so items get registered
-        ItemRegistries.ITEMS.register(modEventBus);
-
-        // Register the Deferred Register to the mod event bus so tabs get registered
-        CreativeTabRegistries.CREATIVE_MODE_TABS.register(modEventBus);
-
-        // Register ourselves for server and other game events we are interested in
-        MinecraftForge.EVENT_BUS.register(this);
-
-        // Register the item to a creative tab
-        modEventBus.addListener(this::addCreative);
-
-        // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
-        context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-    }
-
-    private void commonSetup(final FMLCommonSetupEvent event)
-    {
+        // Register network packets
         PacketRegistries.register();
+
+        // Register common events
+        LifecycleEvent.SERVER_STARTING.register(server -> {
+            // Code to run when the server is starting
+            LOGGER.info("NsTutLib: Server starting");
+        });
+
+        // Example for adding items to creative tabs - this will likely be handled within CreativeTabRegistries
+        // CreativeModeTabEvent.BUILD_CONTENTS.register((tabKey, event) -> {
+        // if (tabKey.equals(CreativeTabRegistries.YOUR_TAB_KEY)) { // Replace with your actual tab key
+        // event.accept(ItemRegistries.YOUR_ITEM_SUPPLIER);
+        // }
+        // });
+
+        LOGGER.info("NsTutLib common setup complete.");
     }
 
-    // Add the example block item to the building blocks tab
-    private void addCreative(BuildCreativeModeTabContentsEvent event)
+    public static void initClient()
     {
+        ClientLifecycleEvent.CLIENT_SETUP.register(minecraft -> { // Corrected event
+            // Code to run during client setup
+            // For example, screen registration if not handled by Architectury's @RegisterScreen
+            LOGGER.info("NsTutLib client setup complete.");
+        });
     }
 
-    // You can use SubscribeEvent and let the Event Bus discover methods to call
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event)
-    {
-
-    }
-
-    // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-    @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-    public static class ClientModEvents
-    {
-        @SubscribeEvent
-        public static void onClientSetup(FMLClientSetupEvent event)
-        {
-
-        }
+    public static Logger getLogger() {
+        return LOGGER;
     }
 }

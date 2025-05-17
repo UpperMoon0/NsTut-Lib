@@ -1,15 +1,15 @@
 package com.nstut.nstutlib.network;
 
 import com.nstut.nstutlib.items.StructureScanner;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
+
+import dev.architectury.networking.NetworkManager; // Added
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+// import net.minecraftforge.network.NetworkEvent; // Removed
+import net.minecraft.world.entity.player.Player; // Added for context.getPlayer()
 
 public class StructureScannerC2SPacket {
     private final int firstX, firstY, firstZ;
@@ -42,13 +42,12 @@ public class StructureScannerC2SPacket {
         buf.writeInt(secondZ);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context context = supplier.get();
-        context.enqueueWork(() -> {
-            // Ensure we are running on the server side
-            if (context.getSender() != null && context.getSender() instanceof ServerPlayer) {
-                ServerPlayer serverPlayer = context.getSender();
-
+    // Updated handle method signature
+    public void handle(NetworkManager.PacketContext context) {
+        // Architectury's NetworkManager#queue ensures this runs on the game thread for the correct side (server for C2S)
+        context.queue(() -> {
+            Player player = context.getPlayer();
+            if (player instanceof ServerPlayer serverPlayer) {
                 // The rest of your logic here
                 ItemStack scannerItem = serverPlayer.getMainHandItem();
                 if (scannerItem.getItem() instanceof StructureScanner) {
@@ -64,11 +63,10 @@ public class StructureScannerC2SPacket {
                     scannerItem.setTag(tag);
 
                     // Optionally, send feedback to the player
-                    serverPlayer.displayClientMessage(Component.literal("Structure corners updated!"), true);
+                    serverPlayer.displayClientMessage(Component.literal("Structure corners updated!"), true); // This is fine, sends a message to the client.
                 }
             }
         });
-
-        context.setPacketHandled(true);
+        // No setPacketHandled in Architectury
     }
 }

@@ -1,11 +1,10 @@
 package com.nstut.nstutlib.network;
 
 import com.nstut.nstutlib.views.StructureScannerScreen;
+import dev.architectury.networking.NetworkManager; // Added
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+// import net.minecraftforge.network.NetworkEvent; // Removed
 
 public class StructureScannerS2CPacket {
     private final int firstX, firstY, firstZ;
@@ -38,18 +37,17 @@ public class StructureScannerS2CPacket {
         buf.writeInt(secondZ);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context context = supplier.get();
-        context.enqueueWork(() -> {
-            // Run on the client to update the UI
-            if (context.getDirection().getReceptionSide().isClient()) {
-                Minecraft.getInstance().execute(() -> {
-                    if (Minecraft.getInstance().screen instanceof StructureScannerScreen screen) {
-                        screen.setCorners(firstX, firstY, firstZ, secondX, secondY, secondZ);
-                    }
-                });
-            }
+    // Updated handle method signature to accept PacketContext directly
+    public void handle(NetworkManager.PacketContext context) {
+        // Architectury's NetworkManager#queue ensures this runs on the game thread for the correct side
+        context.queue(() -> {
+            // This is an S2C packet, so it's handled on the client.
+            Minecraft.getInstance().execute(() -> {
+                if (Minecraft.getInstance().screen instanceof StructureScannerScreen screen) {
+                    screen.setCorners(firstX, firstY, firstZ, secondX, secondY, secondZ);
+                }
+            });
         });
-        context.setPacketHandled(true);
+        // No setPacketHandled in Architectury
     }
 }
