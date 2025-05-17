@@ -7,8 +7,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.function.Supplier;
-
 public class PacketRegistries {
 
     public static final ResourceLocation STRUCTURE_SCANNER_S2C_PACKET_ID = new ResourceLocation(NsTutLib.MOD_ID, "structure_scanner_s2c");

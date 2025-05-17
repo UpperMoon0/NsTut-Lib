@@ -1,10 +1,9 @@
 package com.nstut.nstutlib.network;
 
 import com.nstut.nstutlib.views.StructureScannerScreen;
-import dev.architectury.networking.NetworkManager; // Added
+import dev.architectury.networking.NetworkManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-// import net.minecraftforge.network.NetworkEvent; // Removed
 
 public class StructureScannerS2CPacket {
     private final int firstX, firstY, firstZ;
