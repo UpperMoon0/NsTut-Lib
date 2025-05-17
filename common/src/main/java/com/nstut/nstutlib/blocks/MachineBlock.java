@@ -20,7 +20,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -84,12 +83,13 @@ public class MachineBlock extends BaseEntityBlock {
                                           @NotNull BlockHitResult hit) {
         if (!level.isClientSide) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity != null) {
-                NetworkHooks.openScreen((ServerPlayer) player, (MenuProvider) blockEntity, pos);
+            if (blockEntity instanceof MenuProvider) {
+                player.openMenu((MenuProvider) blockEntity);
+            } else {
+                throw new IllegalStateException("Our Container provider is missing!");
             }
-            return InteractionResult.CONSUME;
-        } else
-            return InteractionResult.SUCCESS;
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     @Override
