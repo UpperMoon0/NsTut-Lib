@@ -4,13 +4,18 @@ import dev.architectury.fluid.FluidStack;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode
 @Data
-public class IngredientFluid extends RecipeFluid {
+public class IngredientFluid {
+    protected FluidStack fluidStack;
     private boolean isConsumable;
 
     public IngredientFluid(FluidStack fluidStack, boolean isConsumable) {
-        super(fluidStack);
+        this.fluidStack = fluidStack;
         this.isConsumable = isConsumable;
+    }
+
+    public FluidStack getFluidStack() {
+        return fluidStack;
     }
 }

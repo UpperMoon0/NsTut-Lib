@@ -3,7 +3,7 @@ package com.nstut.nstutlib.recipes;
 import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
-import dev.architectury.fluid.FluidStack; 
+import dev.architectury.fluid.FluidStack;
 
 import java.io.*;
 
@@ -12,11 +12,11 @@ public class ModRecipeData implements Serializable {
 
     private final IngredientItem[] ingredientItems;
     private final OutputItem[] outputItems;
-    private final FluidStack[] fluidIngredients;
-    private final FluidStack[] fluidOutputs;
+    private final IngredientFluid[] fluidIngredients;
+    private final OutputFluid[] fluidOutputs;
     private final int totalEnergy;
 
-    public ModRecipeData(IngredientItem[] inputs, OutputItem[] outputs, FluidStack[] fluidInputs, FluidStack[] fluidOutputs, int totalEnergy) {
+    public ModRecipeData(IngredientItem[] inputs, OutputItem[] outputs, IngredientFluid[] fluidInputs, OutputFluid[] fluidOutputs, int totalEnergy) {
         this.ingredientItems = inputs;
         this.outputItems = outputs;
         this.fluidIngredients = fluidInputs;
@@ -45,12 +45,14 @@ public class ModRecipeData implements Serializable {
             buf.writeFloat(outputItem.getChance());
         }
         buf.writeInt(fluidIngredients.length);
-        for (FluidStack fluidStack : fluidIngredients) {
-            fluidStack.write(buf);
+        for (IngredientFluid fluidIngredient : fluidIngredients) {
+            fluidIngredient.getFluidStack().write(buf);
+            buf.writeBoolean(fluidIngredient.isConsumable());
         }
         buf.writeInt(fluidOutputs.length);
-        for (FluidStack fluidStack : fluidOutputs) {
-            fluidStack.write(buf);
+        for (OutputFluid fluidOutput : fluidOutputs) {
+            fluidOutput.getFluidStack().write(buf);
+            buf.writeFloat(fluidOutput.getChance());
         }
         buf.writeInt(totalEnergy);
     }
@@ -67,16 +69,16 @@ public class ModRecipeData implements Serializable {
             outputItems[i] = new OutputItem(buf.readItem(), buf.readFloat());
         }
         int fluidIngredientsLength = buf.readInt();
-        FluidStack[] fluidIngredients = new FluidStack[fluidIngredientsLength];
+        IngredientFluid[] fluidIngredients = new IngredientFluid[fluidIngredientsLength];
         for (int i = 0; i < fluidIngredientsLength; i++) {
-            fluidIngredients[i] = FluidStack.read(buf);
+            fluidIngredients[i] = new IngredientFluid(FluidStack.read(buf), buf.readBoolean());
         }
         int fluidResultsLength = buf.readInt();
-        FluidStack[] fluidResults = new FluidStack[fluidResultsLength];
+        OutputFluid[] fluidOutputs = new OutputFluid[fluidResultsLength];
         for (int i = 0; i < fluidResultsLength; i++) {
-            fluidResults[i] = FluidStack.read(buf);
+            fluidOutputs[i] = new OutputFluid(FluidStack.read(buf), buf.readFloat());
         }
         int totalEnergy = buf.readInt();
-        return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidResults, totalEnergy);
+        return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidOutputs, totalEnergy);
     }
 }

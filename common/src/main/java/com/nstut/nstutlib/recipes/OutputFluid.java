@@ -4,13 +4,18 @@ import dev.architectury.fluid.FluidStack;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode
 @Data
-public class OutputFluid extends RecipeFluid {
+public class OutputFluid {
+    protected FluidStack fluidStack;
     private float chance;
 
     public OutputFluid(FluidStack fluidStack, float chance) {
-        super(fluidStack);
+        this.fluidStack = fluidStack;
         this.chance = chance;
+    }
+
+    public FluidStack getFluidStack() {
+        return fluidStack;
     }
 }

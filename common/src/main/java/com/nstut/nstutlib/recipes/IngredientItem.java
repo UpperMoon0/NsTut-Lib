@@ -4,13 +4,14 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import net.minecraft.world.item.ItemStack;
 
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode
 @Data
-public class IngredientItem extends RecipeItem {
+public class IngredientItem {
+    protected ItemStack itemStack;
     private boolean isConsumable;
 
     public IngredientItem(ItemStack itemStack, boolean isConsumable) {
-        super(itemStack);
+        this.itemStack = itemStack;
         this.isConsumable = isConsumable;
     }
 }
