@@ -154,8 +154,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     if (amountNeeded <= 0) break;
                     continue;
                 }
-                // Changed to use FluidStack.isSameFluidAndTag
-                if (FluidStack.isSameFluidAndTag(availableStack, requiredFluid)) {
+                // Compare fluid type and NBT data
+                if (availableStack.getFluid().isSame(requiredFluid.getFluid()) && java.util.Objects.equals(availableStack.getTag(), requiredFluid.getTag())) {
                     long canTake = Math.min(amountNeeded, availableStack.getAmount());
                     availableStack.setAmount(availableStack.getAmount() - canTake); 
                     amountNeeded -= canTake;
@@ -311,14 +311,14 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     for (int tank = 0; tank < fluidStorage.getTankCount(); tank++) {
                         if (amountToConsume <= 0) break;
                         FluidStack fluidInTank = fluidStorage.getFluidInTank(tank);
-                        // Changed to use FluidStack.isSameFluidAndTag
-                        if (FluidStack.isSameFluidAndTag(fluidInTank, requiredFluid)) {
+                        // Compare fluid type and NBT data
+                        if (fluidInTank.getFluid().isSame(requiredFluid.getFluid()) && java.util.Objects.equals(fluidInTank.getTag(), requiredFluid.getTag())) {
                             long toExtract = Math.min(amountToConsume, fluidInTank.getAmount());
                             if (toExtract > 0) {
                                 FluidStack extracted = fluidStorage.extract(toExtract, false);
                                 // Verify the extracted fluid is what was expected.
-                                // Changed to use FluidStack.isSameFluidAndTag
-                                if (FluidStack.isSameFluidAndTag(extracted, requiredFluid) && extracted.getAmount() <= toExtract) {
+                                // Compare fluid type and NBT data
+                                if (extracted.getFluid().isSame(requiredFluid.getFluid()) && java.util.Objects.equals(extracted.getTag(), requiredFluid.getTag()) && extracted.getAmount() <= toExtract) {
                                     amountToConsume -= extracted.getAmount();
                                 } else if (!extracted.isEmpty()){
                                     // Log error and attempt to put back if wrong fluid extracted.
