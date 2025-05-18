@@ -1,12 +1,9 @@
 package com.nstut.nstutlib;
 
 import com.mojang.logging.LogUtils;
-import com.nstut.nstutlib.creative_tabs.CreativeTabRegistries;
-import com.nstut.nstutlib.items.ItemRegistries;
 import com.nstut.nstutlib.network.PacketRegistries;
 import dev.architectury.event.events.common.LifecycleEvent;
-import dev.architectury.event.events.client.ClientLifecycleEvent; // Added for CLIENT_SETUP
-// import dev.architectury.event.events.common.CreativeModeTabEvent; // Example for creative tabs if needed later
+import dev.architectury.event.events.client.ClientLifecycleEvent; 
 import org.slf4j.Logger;
 
 public class NsTutLib

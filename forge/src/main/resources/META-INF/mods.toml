@@ -4,12 +4,12 @@ loaderVersion = "[47,)"
 license = "Insert License Here"
 
 [[mods]]
-modId = "nstutlib"
-version = "${version}"
-displayName = "NsTutLib"
-authors = "Me!"
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
 description = '''
-This is an example description! Tell everyone what your mod is about!
+${mod_description}
 '''
 #logoFile = ""
 

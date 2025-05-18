@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "nstutlib",
-  "version": "${version}",
-  "name": "NsTutLib",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
   "authors": [
     "Me!"
   ],

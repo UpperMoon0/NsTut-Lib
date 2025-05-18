@@ -41,10 +41,14 @@ dependencies {
 }
 
 processResources {
-    inputs.property 'version', project.version
+    inputs.properties(project.properties.subMap(["mod_id", "mod_name", "mod_authors", "mod_description", "mod_license", "mod_version", "loader_version_range", "forge_version_range", "minecraft_version_range"]))
+    from(project(':common').sourceSets.main.resources) {
+        exclude 'META-INF/mods.toml'
+        exclude 'pack.mcmeta' 
+    }
 
     filesMatching('META-INF/mods.toml') {
-        expand version: project.version
+        expand project.properties.subMap(["mod_id", "mod_name", "mod_authors", "mod_description", "mod_license", "mod_version", "loader_version_range", "forge_version_range", "minecraft_version_range"])
     }
 }
 
