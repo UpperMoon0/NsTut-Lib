@@ -38,10 +38,16 @@ dependencies {
 }
 
 processResources {
-    inputs.property 'version', project.version
+    // Define the properties to be used for expansion from project properties (loaded from gradle.properties)
+    def expansionProps = project.properties.subMap(["mod_id", "mod_version", "mod_name", "mod_description"])
+    
+    // Declare these properties as inputs to the task for correct up-to-date checking
+    inputs.properties(expansionProps)
 
     filesMatching('fabric.mod.json') {
-        expand version: project.version
+        // Expand using the defined properties
+        // This will replace placeholders like ${mod_id}, ${mod_version}, etc. in fabric.mod.json
+        expand expansionProps
     }
 }
 
