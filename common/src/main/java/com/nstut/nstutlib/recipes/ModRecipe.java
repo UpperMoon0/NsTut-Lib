@@ -1,27 +1,22 @@
 package com.nstut.nstutlib.recipes;
 
-import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import dev.architectury.fluid.FluidStack;
-import dev.architectury.transfer.fluid.FluidStorage;
-import dev.architectury.transfer.item.ItemStorage;
-import dev.architectury.transfer.transaction.TransactionContext;
+// import dev.architectury.transfer.fluid.FluidStorage;
+// import dev.architectury.transfer.item.ItemStorage;
+// import dev.architectury.transfer.transaction.TransactionContext;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Container>, RecipeFactory<T> {
     protected final ResourceLocation id;
@@ -107,26 +102,24 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     // }
 
     public List<ItemStack> getItemInputs() {
-        return recipeData.getItemInputs().stream()
+        return Arrays.stream(recipeData.getIngredientItems())
                 .map(IngredientItem::getItemStack)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<ItemStack> getItemOutputs() {
-        return recipeData.getItemOutputs().stream()
+        return Arrays.stream(recipeData.getOutputItems())
                 .map(OutputItem::getItemStack)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<FluidStack> getFluidInputs() {
-        return recipeData.getFluidInputs().stream()
-                .map(IngredientFluid::getFluidStack)
+        return Arrays.stream(recipeData.getFluidIngredients())
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<FluidStack> getFluidOutputs() {
-        return recipeData.getFluidOutputs().stream()
-                .map(OutputFluid::getFluidStack)
+        return Arrays.stream(recipeData.getFluidOutputs())
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 }

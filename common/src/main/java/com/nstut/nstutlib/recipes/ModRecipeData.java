@@ -3,7 +3,7 @@ package com.nstut.nstutlib.recipes;
 import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
-import dev.architectury.fluid.FluidStack; // Replaced Forge FluidStack
+import dev.architectury.fluid.FluidStack; 
 
 import java.io.*;
 
@@ -46,11 +46,11 @@ public class ModRecipeData implements Serializable {
         }
         buf.writeInt(fluidIngredients.length);
         for (FluidStack fluidStack : fluidIngredients) {
-            buf.writeFluidStack(fluidStack);
+            fluidStack.write(buf);
         }
         buf.writeInt(fluidOutputs.length);
         for (FluidStack fluidStack : fluidOutputs) {
-            buf.writeFluidStack(fluidStack);
+            fluidStack.write(buf);
         }
         buf.writeInt(totalEnergy);
     }
@@ -69,12 +69,12 @@ public class ModRecipeData implements Serializable {
         int fluidIngredientsLength = buf.readInt();
         FluidStack[] fluidIngredients = new FluidStack[fluidIngredientsLength];
         for (int i = 0; i < fluidIngredientsLength; i++) {
-            fluidIngredients[i] = buf.readFluidStack();
+            fluidIngredients[i] = FluidStack.read(buf);
         }
         int fluidResultsLength = buf.readInt();
         FluidStack[] fluidResults = new FluidStack[fluidResultsLength];
         for (int i = 0; i < fluidResultsLength; i++) {
-            fluidResults[i] = buf.readFluidStack();
+            fluidResults[i] = FluidStack.read(buf);
         }
         int totalEnergy = buf.readInt();
         return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidResults, totalEnergy);
