@@ -154,10 +154,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     if (amountNeeded <= 0) break;
                     continue;
                 }
-                // Use FluidStack.isSameStack for fluid type and NBT comparison.
-                // Assuming FluidStack.areStacksEqual was intended to be similar to ItemStack.isSameItemSameTags
-                // Architectury's FluidStack.isSameStack(FluidStack other) seems appropriate for this.
-                if (availableStack.isSameStack(requiredFluid)) { // Changed here from FluidStack.areStacksEqual
+                // Changed to use FluidStack.isSameFluidAndTag
+                if (FluidStack.isSameFluidAndTag(availableStack, requiredFluid)) {
                     long canTake = Math.min(amountNeeded, availableStack.getAmount());
                     availableStack.setAmount(availableStack.getAmount() - canTake); 
                     amountNeeded -= canTake;
@@ -313,15 +311,14 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     for (int tank = 0; tank < fluidStorage.getTankCount(); tank++) {
                         if (amountToConsume <= 0) break;
                         FluidStack fluidInTank = fluidStorage.getFluidInTank(tank);
-                        // Use FluidStack.isSameStack for fluid type and NBT comparison.
-                        // Assuming FluidStack.areStacksEqual was intended to be similar to ItemStack.isSameItemSameTags
-                        // Architectury's FluidStack.isSameStack(FluidStack other) seems appropriate for this.
-                        if (fluidInTank.isSameStack(requiredFluid)) { // Changed here from FluidStack.areStacksEqual
+                        // Changed to use FluidStack.isSameFluidAndTag
+                        if (FluidStack.isSameFluidAndTag(fluidInTank, requiredFluid)) {
                             long toExtract = Math.min(amountToConsume, fluidInTank.getAmount());
                             if (toExtract > 0) {
                                 FluidStack extracted = fluidStorage.extract(toExtract, false);
                                 // Verify the extracted fluid is what was expected.
-                                if (extracted.isSameStack(requiredFluid) && extracted.getAmount() <= toExtract) { // Changed here
+                                // Changed to use FluidStack.isSameFluidAndTag
+                                if (FluidStack.isSameFluidAndTag(extracted, requiredFluid) && extracted.getAmount() <= toExtract) {
                                     amountToConsume -= extracted.getAmount();
                                 } else if (!extracted.isEmpty()){
                                     // Log error and attempt to put back if wrong fluid extracted.

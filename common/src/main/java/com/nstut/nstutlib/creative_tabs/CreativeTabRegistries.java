@@ -14,7 +14,7 @@ public class CreativeTabRegistries {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(NsTutLib.MOD_ID, Registries.CREATIVE_MODE_TAB);
     @SuppressWarnings("unused")
     public static final RegistrySupplier<CreativeModeTab> NSTUT_LIB_TAB = CREATIVE_MODE_TABS.register("nstutlib", () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0) // Added Row.TOP and 0
-            .withTabsBefore(CreativeModeTabs.COMBAT)
+            // .withTabsBefore(CreativeModeTabs.COMBAT) // Commented out for now
             .icon(() -> ItemRegistries.SMART_HAMMER.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 for (RegistrySupplier<Item> i : ItemRegistries.ITEM_SET) {
