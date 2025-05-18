@@ -20,9 +20,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
+
+import dev.architectury.platform.Platform;
+import dev.architectury.registry.registries.DeferredRegister;
+import net.minecraft.core.registries.BuiltInRegistries; 
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -31,7 +33,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class StructureScannerScreen extends Screen {
-    private static final String SCRIPT_OUTPUT_PATH = FMLPaths.GAMEDIR.get().resolve("nstut_script_output").toString();
+    private static final String SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve("nstut_script_output").toString();
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
     private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
 
@@ -144,7 +146,8 @@ public class StructureScannerScreen extends Screen {
                 for (int x = maxX; x >= minX; x--) {
                     BlockPos pos = new BlockPos(x, y, z);
                     BlockState state = level.getBlockState(pos);
-                    String blockName = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(state.getBlock())).toString();
+                    // Use vanilla BuiltInRegistries to get the block's ResourceLocation
+                    String blockName = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(state.getBlock())).toString();
 
                     // Capture block states
                     Map<String, String> stateMap = state.getProperties().stream()
@@ -280,7 +283,8 @@ public class StructureScannerScreen extends Screen {
         // Modify the mapping output to match the required format
         Map<String, String> formattedMapping = new LinkedHashMap<>();
         for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
-            String blockStateString = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(entry.getValue().getBlock())).toString();
+            // Use vanilla BuiltInRegistries to get the block's ResourceLocation
+            String blockStateString = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(entry.getValue().getBlock())).toString();
 
             // Add block state properties
             String blockStateProperties = entry.getValue().getStates().entrySet().stream()
@@ -318,6 +322,7 @@ public class StructureScannerScreen extends Screen {
             for (MultiblockBlock[] row : layer) {
                 for (MultiblockBlock block : row) {
                     if (block != null && !mapping.containsValue(block)) {
+                        // Ensure block key is retrieved using Architectury API if needed here, though it's for the value
                         mapping.put(String.valueOf(currentChar++), block);
                     }
                 }
@@ -327,7 +332,8 @@ public class StructureScannerScreen extends Screen {
         // Filter and map unique blocks to variable names
         for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
             MultiblockBlock block = entry.getValue();
-            String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock()).toString();
+            // Use vanilla BuiltInRegistries to get the block's ResourceLocation
+            String blockName = BuiltInRegistries.BLOCK.getKey(block.getBlock()).toString();
             filteredMapping.putIfAbsent(entry.getKey(), blockName); // Avoids duplicates
         }
 
@@ -341,7 +347,8 @@ public class StructureScannerScreen extends Screen {
             List<String> declarations = new ArrayList<>();
             for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
                 MultiblockBlock block = entry.getValue();
-                String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock())
+                // Use vanilla BuiltInRegistries to get the block's ResourceLocation
+                String blockName = BuiltInRegistries.BLOCK.getKey(block.getBlock())
                         .toString()
                         .replace("minecraft:", "")
                         .toUpperCase()
