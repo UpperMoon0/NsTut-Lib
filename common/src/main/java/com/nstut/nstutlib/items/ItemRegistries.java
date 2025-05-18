@@ -20,4 +20,8 @@ public class ItemRegistries {
         add(SMART_HAMMER);
         add(STRUCTURE_SCANNER);
     }};
+
+    public static void register() {
+        ITEMS.register();
+    }
 }

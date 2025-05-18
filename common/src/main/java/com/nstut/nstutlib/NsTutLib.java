@@ -1,6 +1,8 @@
 package com.nstut.nstutlib;
 
 import com.mojang.logging.LogUtils;
+import com.nstut.nstutlib.creative_tabs.CreativeTabRegistries;
+import com.nstut.nstutlib.items.ItemRegistries;
 import com.nstut.nstutlib.network.PacketRegistries;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.client.ClientLifecycleEvent; 
@@ -19,8 +21,8 @@ public class NsTutLib
 
         // Register items and creative tabs
         // These methods will need to be adapted in their respective classes to use Architectury's registration
-        // ItemRegistries.register(); // Commented out for now
-        // CreativeTabRegistries.register(); // Commented out for now
+        ItemRegistries.register(); // Ensure items are registered
+        CreativeTabRegistries.register(); // Ensure creative tabs are registered
 
         // Register network packets
         PacketRegistries.register();
