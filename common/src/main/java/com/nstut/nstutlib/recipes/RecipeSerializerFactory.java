@@ -70,31 +70,7 @@ public class RecipeSerializerFactory<R extends ModRecipe<R>> {
                 pBuffer.writeInt(recipeContainer.getTotalEnergy());
             }
 
-            // Added RegistryAccess parameter to match the updated RecipeSerializer interface
-            @Override
-            public JsonObject toJson(@NotNull R pRecipe, @NotNull net.minecraft.core.RegistryAccess registryAccess) { 
-                JsonObject json = new JsonObject();
-                ModRecipeData recipeContainer = pRecipe.getRecipeData();
-
-                JsonArray itemInputsArray = new JsonArray();
-                writeIngredientItemArrayToJson(itemInputsArray, recipeContainer.getIngredientItems());
-                json.add("itemInputs", itemInputsArray);
-
-                JsonArray itemOutputsArray = new JsonArray();
-                writeOutputItemArrayToJson(itemOutputsArray, recipeContainer.getOutputItems());
-                json.add("itemOutputs", itemOutputsArray);
-
-                JsonArray fluidInputsArray = new JsonArray();
-                writeIngredientFluidArrayToJson(fluidInputsArray, recipeContainer.getFluidIngredients());
-                json.add("fluidInputs", fluidInputsArray);
-
-                JsonArray fluidOutputsArray = new JsonArray();
-                writeOutputFluidArrayToJson(fluidOutputsArray, recipeContainer.getFluidOutputs());
-                json.add("fluidOutputs", fluidOutputsArray);
-
-                json.addProperty("energy", recipeContainer.getTotalEnergy());
-                return json;
-            }
+            // toJson method removed as it's not part of the RecipeSerializer interface
         };
     }
 
