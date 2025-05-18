@@ -60,7 +60,7 @@ public class StructureScanner extends Item {
             int secondCornerZ = scannerItem.getOrCreateTag().getInt("SecondCornerZ");
 
             if (player instanceof ServerPlayer) {
-                PacketRegistries.sendToClients(new StructureScannerS2CPacket(firstCornerX, firstCornerY, firstCornerZ, secondCornerX, secondCornerY, secondCornerZ));
+                PacketRegistries.sendToClient((ServerPlayer) player, new StructureScannerS2CPacket(firstCornerX, firstCornerY, firstCornerZ, secondCornerX, secondCornerY, secondCornerZ));
             }
         } else { // Client-side logic
             if (Minecraft.getInstance().hitResult != null && Minecraft.getInstance().hitResult.getType() == HitResult.Type.MISS) {

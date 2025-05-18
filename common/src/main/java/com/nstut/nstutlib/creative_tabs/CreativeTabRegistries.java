@@ -13,7 +13,7 @@ import net.minecraft.world.item.Item;
 public class CreativeTabRegistries {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(NsTutLib.MOD_ID, Registries.CREATIVE_MODE_TAB);
     @SuppressWarnings("unused")
-    public static final RegistrySupplier<CreativeModeTab> NSTUT_LIB_TAB = CREATIVE_MODE_TABS.register("nstutlib", () -> CreativeModeTab.builder()
+    public static final RegistrySupplier<CreativeModeTab> NSTUT_LIB_TAB = CREATIVE_MODE_TABS.register("nstutlib", () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0) // Added Row.TOP and 0
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ItemRegistries.SMART_HAMMER.get().getDefaultInstance())
             .displayItems((parameters, output) -> {

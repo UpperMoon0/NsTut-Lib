@@ -154,8 +154,10 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     if (amountNeeded <= 0) break;
                     continue;
                 }
-                // Use FluidStack.areStacksEqual for fluid type and NBT comparison.
-                if (FluidStack.areStacksEqual(availableStack, requiredFluid)) {
+                // Use FluidStack.isSameStack for fluid type and NBT comparison.
+                // Assuming FluidStack.areStacksEqual was intended to be similar to ItemStack.isSameItemSameTags
+                // Architectury's FluidStack.isSameStack(FluidStack other) seems appropriate for this.
+                if (availableStack.isSameStack(requiredFluid)) { // Changed here from FluidStack.areStacksEqual
                     long canTake = Math.min(amountNeeded, availableStack.getAmount());
                     availableStack.setAmount(availableStack.getAmount() - canTake); 
                     amountNeeded -= canTake;
@@ -204,7 +206,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
 
         // Check fluid output space
-        for (FluidStack fluidStackToOutput : recipeData.getFluidOutputs()) {
+        for (OutputFluid outputFluid : recipeData.getFluidOutputs()) { // Changed here
+            FluidStack fluidStackToOutput = outputFluid.getFluidStack(); // Added here
             if (fluidStackToOutput.isEmpty()) {
                 continue;
             }
@@ -310,13 +313,15 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     for (int tank = 0; tank < fluidStorage.getTankCount(); tank++) {
                         if (amountToConsume <= 0) break;
                         FluidStack fluidInTank = fluidStorage.getFluidInTank(tank);
-                        // Use FluidStack.areStacksEqual for fluid type and NBT comparison.
-                        if (FluidStack.areStacksEqual(fluidInTank, requiredFluid)) {
+                        // Use FluidStack.isSameStack for fluid type and NBT comparison.
+                        // Assuming FluidStack.areStacksEqual was intended to be similar to ItemStack.isSameItemSameTags
+                        // Architectury's FluidStack.isSameStack(FluidStack other) seems appropriate for this.
+                        if (fluidInTank.isSameStack(requiredFluid)) { // Changed here from FluidStack.areStacksEqual
                             long toExtract = Math.min(amountToConsume, fluidInTank.getAmount());
                             if (toExtract > 0) {
                                 FluidStack extracted = fluidStorage.extract(toExtract, false);
                                 // Verify the extracted fluid is what was expected.
-                                if (FluidStack.areStacksEqual(extracted, requiredFluid) && extracted.getAmount() <= toExtract) {
+                                if (extracted.isSameStack(requiredFluid) && extracted.getAmount() <= toExtract) { // Changed here
                                     amountToConsume -= extracted.getAmount();
                                 } else if (!extracted.isEmpty()){
                                     // Log error and attempt to put back if wrong fluid extracted.

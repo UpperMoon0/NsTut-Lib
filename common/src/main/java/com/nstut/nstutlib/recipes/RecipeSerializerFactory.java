@@ -20,16 +20,19 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
-public class RecipeSerializerFactory<R extends ModRecipe<D>, D extends ModRecipeData> {
+// R must extend ModRecipe<R>
+public class RecipeSerializerFactory<R extends ModRecipe<R>> {
 
-    private final RecipeFactory<R, D> factory;
+    // The factory will produce instances of R using ModRecipeData
+    private final RecipeFactory<R> factory;
 
-    private RecipeSerializerFactory(RecipeFactory<R, D> factory) {
+    private RecipeSerializerFactory(RecipeFactory<R> factory) {
         this.factory = factory;
     }
 
-    public static <R extends ModRecipe<D>, D extends ModRecipeData> RecipeSerializer<R> create(RecipeType<R> type, RecipeFactory<R, D> factory) {
-        RecipeSerializerFactory<R, D> recipeSerializerFactory = new RecipeSerializerFactory<>(factory);
+    // R must extend ModRecipe<R>
+    public static <R extends ModRecipe<R>> RecipeSerializer<R> create(RecipeType<R> type, RecipeFactory<R> factory) {
+        RecipeSerializerFactory<R> recipeSerializerFactory = new RecipeSerializerFactory<>(factory);
         return recipeSerializerFactory.createSerializer();
     }
 
@@ -38,8 +41,8 @@ public class RecipeSerializerFactory<R extends ModRecipe<D>, D extends ModRecipe
             @Override
             public R fromJson(@NotNull ResourceLocation pRecipeId, @NotNull JsonObject pSerializedRecipe) {
                 ModRecipeData recipeData = readRecipeDataFromJson(pSerializedRecipe);
-                // Unchecked cast, but factory is typed to produce R with D, and ModRecipeData is D
-                return factory.create(pRecipeId, (D) recipeData);
+                // Factory creates R using ModRecipeData
+                return factory.create(pRecipeId, recipeData);
             }
 
             @Override
@@ -50,8 +53,8 @@ public class RecipeSerializerFactory<R extends ModRecipe<D>, D extends ModRecipe
                 OutputFluid[] fluidResults = readOutputFluidArray(pBuffer);
                 int totalEnergy = pBuffer.readInt();
 
-                // Construct D directly if possible, or ensure ModRecipeData can be cast
-                D recipeData = (D) new ModRecipeData(itemIngredients, itemResults, fluidIngredients, fluidResults, totalEnergy);
+                ModRecipeData recipeData = new ModRecipeData(itemIngredients, itemResults, fluidIngredients, fluidResults, totalEnergy);
+                // Factory creates R using ModRecipeData
                 return factory.create(pRecipeId, recipeData);
             }
 
@@ -67,8 +70,9 @@ public class RecipeSerializerFactory<R extends ModRecipe<D>, D extends ModRecipe
                 pBuffer.writeInt(recipeContainer.getTotalEnergy());
             }
 
+            // Added RegistryAccess parameter to match the updated RecipeSerializer interface
             @Override
-            public JsonObject toJson(@NotNull R pRecipe) { // Ensure R is the correct type here
+            public JsonObject toJson(@NotNull R pRecipe, @NotNull net.minecraft.core.RegistryAccess registryAccess) { 
                 JsonObject json = new JsonObject();
                 ModRecipeData recipeContainer = pRecipe.getRecipeData();
 
@@ -335,7 +339,9 @@ public class RecipeSerializerFactory<R extends ModRecipe<D>, D extends ModRecipe
         return json;
     }
 
-    public interface RecipeFactory<R extends ModRecipe<D>, D extends ModRecipeData> {
-        R create(ResourceLocation id, D recipeData);
+    // The RecipeFactory interface creates an instance of R (which extends ModRecipe<R>)
+    // using a ResourceLocation and ModRecipeData.
+    public interface RecipeFactory<T extends ModRecipe<T>> {
+        T create(ResourceLocation id, ModRecipeData recipeData);
     }
 }
