@@ -28,12 +28,16 @@ import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files; // Added for Files.createDirectories
+import java.nio.file.Path; // Added for Path object
+import java.nio.file.Paths; // Added for Paths.get
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class StructureScannerScreen extends Screen {
-    private static final String SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve("nstut_script_output").toString();
+    private static final String SCRIPT_OUTPUT_DIR_NAME = "nstut_script_output"; // Define directory name
+    private static final Path SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve(SCRIPT_OUTPUT_DIR_NAME); // Use Path object
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
     private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
 
@@ -119,96 +123,130 @@ public class StructureScannerScreen extends Screen {
     }
 
     private void onExport(Button button) {
-        int x1 = Integer.parseInt(this.firstCornerX.getValue());
-        int y1 = Integer.parseInt(this.firstCornerY.getValue());
-        int z1 = Integer.parseInt(this.firstCornerZ.getValue());
-        int x2 = Integer.parseInt(this.secondCornerX.getValue());
-        int y2 = Integer.parseInt(this.secondCornerY.getValue());
-        int z2 = Integer.parseInt(this.secondCornerZ.getValue());
+        try { // Add try-catch for parsing errors
+            int x1 = Integer.parseInt(this.firstCornerX.getValue());
+            int y1 = Integer.parseInt(this.firstCornerY.getValue());
+            int z1 = Integer.parseInt(this.firstCornerZ.getValue());
+            int x2 = Integer.parseInt(this.secondCornerX.getValue());
+            int y2 = Integer.parseInt(this.secondCornerY.getValue());
+            int z2 = Integer.parseInt(this.secondCornerZ.getValue());
 
-        int minX = Math.min(x1, x2);
-        int minY = Math.min(y1, y2);
-        int minZ = Math.min(z1, z2);
-        int maxX = Math.max(x1, x2);
-        int maxY = Math.max(y1, y2);
-        int maxZ = Math.max(z1, z2);
+            // Ensure the output directory exists
+            try {
+                if (!Files.exists(SCRIPT_OUTPUT_PATH)) {
+                    Files.createDirectories(SCRIPT_OUTPUT_PATH);
+                    LOGGER.info("Created script output directory: " + SCRIPT_OUTPUT_PATH.toString());
+                }
+            } catch (IOException e) {
+                LOGGER.severe("Failed to create script output directory: " + SCRIPT_OUTPUT_PATH.toString() + " - " + e.getMessage());
+                // Optionally, inform the user via chat or a screen message
+                if (this.minecraft != null && this.minecraft.player != null) {
+                    this.minecraft.player.displayClientMessage(Component.literal("Error: Could not create export directory. Check logs."), false);
+                }
+                return; // Stop export if directory creation fails
+            }
 
-        // Initialize pattern and mapping
-        List<List<String>> pattern = new ArrayList<>();
-        Map<String, MultiblockBlock> mapping = new HashMap<>();
-        char currentChar = 'a';
+            int minX = Math.min(x1, x2);
+            int minY = Math.min(y1, y2);
+            int minZ = Math.min(z1, z2);
+            int maxX = Math.max(x1, x2);
+            int maxY = Math.max(y1, y2);
+            int maxZ = Math.max(z1, z2);
 
-        // Iterate over the area to capture block data
-        for (int y = maxY; y >= minY; y--) {
-            List<String> layer = new ArrayList<>();
-            for (int z = minZ; z <= maxZ; z++) {
-                StringBuilder row = new StringBuilder();
-                for (int x = maxX; x >= minX; x--) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    BlockState state = level.getBlockState(pos);
-                    // Use vanilla BuiltInRegistries to get the block's ResourceLocation
-                    String blockName = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(state.getBlock())).toString();
+            // Initialize pattern and mapping
+            List<List<String>> pattern = new ArrayList<>();
+            Map<String, MultiblockBlock> mapping = new HashMap<>();
+            char currentChar = 'a';
 
-                    // Capture block states
-                    Map<String, String> stateMap = state.getProperties().stream()
-                            .collect(Collectors.toMap
-                                    (
-                                            Property::getName,
-                                            property -> state.getValue(property).toString()
-                                    )
-                            );
+            // Iterate over the area to capture block data
+            for (int y = maxY; y >= minY; y--) {
+                List<String> layer = new ArrayList<>();
+                for (int z = minZ; z <= maxZ; z++) {
+                    StringBuilder row = new StringBuilder();
+                    for (int x = maxX; x >= minX; x--) {
+                        BlockPos pos = new BlockPos(x, y, z);
+                        BlockState state = level.getBlockState(pos);
+                        // Use vanilla BuiltInRegistries to get the block's ResourceLocation
+                        String blockName = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(state.getBlock())).toString();
 
-                    if (blockName.equals("minecraft:air")) {
-                        row.append(" ");
-                    } else {
-                        MultiblockBlock multiblockBlock = new MultiblockBlock(state.getBlock(), stateMap);
-                        String symbol = mapping.entrySet().stream()
-                                .filter(entry -> entry.getValue().equals(multiblockBlock))
-                                .map(Map.Entry::getKey)
-                                .findFirst()
-                                .orElse(null);
+                        // Capture block states
+                        Map<String, String> stateMap = state.getProperties().stream()
+                                .collect(Collectors.toMap
+                                        (
+                                                Property::getName,
+                                                property -> state.getValue(property).toString()
+                                        )
+                                );
 
-                        if (symbol == null) {
-                            symbol = String.valueOf(currentChar);
-                            mapping.put(symbol, multiblockBlock);
-                            currentChar++;
+                        if (blockName.equals("minecraft:air")) {
+                            row.append(" ");
+                        } else {
+                            MultiblockBlock multiblockBlock = new MultiblockBlock(state.getBlock(), stateMap);
+                            String symbol = mapping.entrySet().stream()
+                                    .filter(entry -> entry.getValue().equals(multiblockBlock))
+                                    .map(Map.Entry::getKey)
+                                    .findFirst()
+                                    .orElse(null);
+
+                            if (symbol == null) {
+                                symbol = String.valueOf(currentChar);
+                                mapping.put(symbol, multiblockBlock);
+                                currentChar++;
+                            }
+
+                            row.append(symbol);
                         }
-
-                        row.append(symbol);
                     }
+                    layer.add(row.toString()); // Add the reversed row to the layer
                 }
-                layer.add(row.toString()); // Add the reversed row to the layer
+                pattern.add(0, layer); // Add the layer in reverse order to fix Y-axis flipping
             }
-            pattern.add(0, layer); // Add the layer in reverse order to fix Y-axis flipping
-        }
 
-        // Create a MultiblockPattern object from the collected pattern
-        MultiblockBlock[][][] blockArray = new MultiblockBlock[pattern.size()][][];
-        for (int y = 0; y < pattern.size(); y++) {
-            List<String> layer = pattern.get(y);
-            MultiblockBlock[][] layerArray = new MultiblockBlock[layer.size()][];
-            for (int z = 0; z < layer.size(); z++) {
-                String row = layer.get(z);
-                MultiblockBlock[] rowArray = new MultiblockBlock[row.length()];
-                for (int x = row.length() - 1; x >= 0; x--) {
-                    String symbol = String.valueOf(row.charAt(x));
-                    if (" ".equals(symbol)) {
-                        rowArray[x] = null;
-                    } else {
-                        rowArray[x] = mapping.get(symbol);
+            // Create a MultiblockPattern object from the collected pattern
+            MultiblockBlock[][][] blockArray = new MultiblockBlock[pattern.size()][][];
+            for (int y = 0; y < pattern.size(); y++) {
+                List<String> layer = pattern.get(y);
+                MultiblockBlock[][] layerArray = new MultiblockBlock[layer.size()][];
+                for (int z = 0; z < layer.size(); z++) {
+                    String row = layer.get(z);
+                    MultiblockBlock[] rowArray = new MultiblockBlock[row.length()];
+                    for (int x = row.length() - 1; x >= 0; x--) {
+                        String symbol = String.valueOf(row.charAt(x));
+                        if (" ".equals(symbol)) {
+                            rowArray[x] = null;
+                        } else {
+                            rowArray[x] = mapping.get(symbol);
+                        }
                     }
+                    layerArray[z] = rowArray;
                 }
-                layerArray[z] = rowArray;
+                blockArray[y] = layerArray;
             }
-            blockArray[y] = layerArray;
+
+            // Create a MultiblockPattern object
+            MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray);
+
+            // Write to files using the new MultiblockPattern object
+            writeJson(multiblockPattern);
+            writeTxt(multiblockPattern);
+
+            // Inform user of success
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.displayClientMessage(Component.literal("Structure exported to " + SCRIPT_OUTPUT_DIR_NAME), false);
+            }
+
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Invalid input for export: " + e.getMessage());
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.displayClientMessage(Component.literal("Error: Invalid coordinates for export."), false);
+            }
+        } catch (Exception e) { // Catch any other unexpected errors during export
+            LOGGER.severe("An unexpected error occurred during export: " + e.getMessage());
+            e.printStackTrace(); // Print stack trace for debugging
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.displayClientMessage(Component.literal("Error: An unexpected error occurred during export. Check logs."), false);
+            }
         }
-
-        // Create a MultiblockPattern object
-        MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray);
-
-        // Write to files using the new MultiblockPattern object
-        writeJson(multiblockPattern);
-        writeTxt(multiblockPattern);
     }
 
     @Override
@@ -304,7 +342,8 @@ public class StructureScannerScreen extends Screen {
 
         // Serialize to JSON and save to file
         Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH + "\\structure_patchouli.json")) {
+        // Use Path.resolve to create the file path
+        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH.resolve("structure_patchouli.json").toFile())) {
             gson.toJson(jsonData, writer);
         } catch (IOException e) {
             LOGGER.severe("Failed to write JSON file: " + e.getMessage());
@@ -338,7 +377,8 @@ public class StructureScannerScreen extends Screen {
         }
 
         // Write the multiblock pattern
-        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH + "\\structure_pattern.txt")) {
+        // Use Path.resolve to create the file path
+        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH.resolve("structure_pattern.txt").toFile())) {
             writer.write("@Override\n");
             writer.write("public MultiblockPattern getMultiblockPattern() {\n");
 
