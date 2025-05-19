@@ -67,7 +67,6 @@ publishing {
             groupId = project.group
             artifactId = "${base.archivesName.get()}-fabric"
             version = project.version
-            from components.java
 
             // Include the remapped JAR
             artifact(remapJar) {

@@ -68,7 +68,6 @@ publishing {
             groupId = project.group
             artifactId = "${base.archivesName.get()}-forge"
             version = project.version
-            from components.java
 
             // Include the remapped JAR
             artifact(remapJar) {
