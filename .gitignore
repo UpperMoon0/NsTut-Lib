@@ -86,4 +86,6 @@ Desktop.ini
 # Sensitive information
 *.keystore
 *.jks
-*.properties
+# *.properties # Comment out or remove this line
+!gradle.properties
+!*/gradle.properties
