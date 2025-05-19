@@ -65,7 +65,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             groupId = project.group
-            artifactId = "${base.archivesName.get()}-fabric"
+            artifactId = base.archivesName.get() 
             version = project.version
 
             // Include the remapped JAR
