@@ -60,3 +60,25 @@ shadowJar {
 remapJar {
     inputFile.set shadowJar.archiveFile
 }
+
+// Add publishing configuration for Forge
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group
+            artifactId = "${base.archivesName.get()}-forge"
+            version = project.version
+            from components.java
+
+            // Include the remapped JAR
+            artifact(remapJar) {
+                classifier = null // No classifier for the main artifact
+            }
+
+            // Optionally, include sources JAR
+            artifact(sourcesJar) {
+                classifier = "sources"
+            }
+        }
+    }
+}

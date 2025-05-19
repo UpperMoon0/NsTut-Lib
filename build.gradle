@@ -56,19 +56,23 @@ subprojects {
 
     // Configure Maven publishing.
     publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                artifactId = base.archivesName.get()
-                from components.java
-            }
-        }
+        // Publications will be defined in each subproject (fabric/forge)
+        // Remove the generic publication from here if it exists,
+        // or ensure subprojects override it.
+        // For clarity, we remove the generic 'mavenJava' publication here.
+        // publications.remove(publications.findByName("mavenJava")) // Or ensure it's not defined here
 
-        // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
         repositories {
-            // Add repositories to publish to here.
-            // Notice: This block does NOT have the same function as the block in the top level.
-            // The repositories here will be used for publishing your artifact, not for
-            // retrieving dependencies.
+            maven {
+                name = "GitHubPackages"
+                // The URL will be something like: "https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME"
+                // We use environment variables that will be available in GitHub Actions
+                url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY") ?: System.getenv("github.repository")}")
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR") ?: System.getenv("github.actor")
+                    password = System.getenv("GITHUB_TOKEN") ?: System.getenv("github.token")
+                }
+            }
         }
     }
 }
