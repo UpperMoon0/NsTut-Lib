@@ -1,4 +1,4 @@
-name: Build and Release Mod
+name: Build, Publish, and Release Mod
 
 on:
   push:
@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write # Added for publishing to GitHub Packages
 
     steps:
       - name: Checkout repository
@@ -21,6 +22,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle' 
+
+      - name: Validate Gradle wrapper # Added from publish.yml
+        uses: gradle/wrapper-validation-action@v2
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
