@@ -17,12 +17,12 @@ public class NsTutLib
     public static void init()
     {
         // Load config
-        Config.onLoad(); // Ensure config is loaded; Config.register() also hooks into LifecycleEvent.SETUP
+        Config.onLoad(); 
 
         // Register items and creative tabs
         // These methods will need to be adapted in their respective classes to use Architectury's registration
-        ItemRegistries.register(); // Ensure items are registered
-        CreativeTabRegistries.register(); // Ensure creative tabs are registered
+        ItemRegistries.register(); 
+        CreativeTabRegistries.register(); 
 
         // Register network packets
         PacketRegistries.register();
@@ -33,21 +33,12 @@ public class NsTutLib
             LOGGER.info("NsTutLib: Server starting");
         });
 
-        // Example for adding items to creative tabs - this will likely be handled within CreativeTabRegistries
-        // CreativeModeTabEvent.BUILD_CONTENTS.register((tabKey, event) -> {
-        // if (tabKey.equals(CreativeTabRegistries.YOUR_TAB_KEY)) { // Replace with your actual tab key
-        // event.accept(ItemRegistries.YOUR_ITEM_SUPPLIER);
-        // }
-        // });
-
         LOGGER.info("NsTutLib common setup complete.");
     }
 
     public static void initClient()
     {
-        ClientLifecycleEvent.CLIENT_SETUP.register(minecraft -> { // Corrected event
-            // Code to run during client setup
-            // For example, screen registration if not handled by Architectury's @RegisterScreen
+        ClientLifecycleEvent.CLIENT_SETUP.register(minecraft -> { 
             LOGGER.info("NsTutLib client setup complete.");
         });
     }
