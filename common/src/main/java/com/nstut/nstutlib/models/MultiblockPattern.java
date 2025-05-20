@@ -15,18 +15,21 @@ public class MultiblockPattern {
     private static final Logger LOGGER = Logger.getLogger(MultiblockPattern.class.getName());
 
     private final MultiblockBlock[][][] pattern;
+    private final int controllerSouthOffsetX;
+    private final int controllerSouthOffsetY;
+    private final int controllerSouthOffsetZ;
 
-    public MultiblockPattern(MultiblockBlock[][][] pattern) {
+    public MultiblockPattern(MultiblockBlock[][][] pattern, int controllerSouthOffsetX, int controllerSouthOffsetY, int controllerSouthOffsetZ) {
         this.pattern = pattern;
+        this.controllerSouthOffsetX = controllerSouthOffsetX;
+        this.controllerSouthOffsetY = controllerSouthOffsetY;
+        this.controllerSouthOffsetZ = controllerSouthOffsetZ;
     }
 
     public boolean check(Level level,
                          BlockPos controllerPos,
-                         BlockState blockState,
-                         int southOffsetX,
-                         int southOffsetY,
-                         int southOffsetZ) {
-        MultiblockPattern multiPatternCopy = new MultiblockPattern(copyPattern(this.pattern));
+                         BlockState blockState) { // Removed offset parameters
+        MultiblockPattern multiPatternCopy = new MultiblockPattern(copyPattern(this.pattern), this.controllerSouthOffsetX, this.controllerSouthOffsetY, this.controllerSouthOffsetZ);
         MultiblockBlock[][][] patternCopy = multiPatternCopy.pattern;
 
         for (int y = 0; y < patternCopy.length; y++) {
@@ -35,9 +38,9 @@ public class MultiblockPattern {
                     // Calculate the position relative to the controller
                     BlockPos currentBlockPos = rotateBlockPos(
                             controllerPos,
-                            southOffsetX,
-                            southOffsetY,
-                            southOffsetZ,
+                            this.controllerSouthOffsetX, // Use internal offset
+                            this.controllerSouthOffsetY, // Use internal offset
+                            this.controllerSouthOffsetZ, // Use internal offset
                             patternCopy.length,
                             patternCopy[0].length,
                             x,

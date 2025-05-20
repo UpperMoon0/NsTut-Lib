@@ -4,4 +4,7 @@ import com.nstut.nstutlib.models.MultiblockPattern;
 
 public interface Multiblock {
     MultiblockPattern getMultiblockPattern();
+    int getControllerSouthOffsetX();
+    int getControllerSouthOffsetY();
+    int getControllerSouthOffsetZ();
 }

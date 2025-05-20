@@ -25,15 +25,6 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     // Stores the structure pattern for the multiblock machine
     protected MultiblockPattern multiblockPattern;
 
-    @Getter
-    private final int southOffsetX;
-
-    @Getter
-    private final int southOffsetY;
-
-    @Getter
-    private final int southOffsetZ;
-
     // Tracks the amount of energy consumed by the machine
     protected int energyConsumed;
 
@@ -49,15 +40,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     // Constructor for the machine block entity, sets its position and block state
     public MachineBlockEntity(BlockEntityType<? extends MachineBlockEntity> pType,
                               BlockPos pPos,
-                              BlockState pBlockState,
-                              int southOffsetX,
-                              int southOffsetY,
-                              int southOffsetZ) {
+                              BlockState pBlockState) { // Removed offset parameters
         super(pType, pPos, pBlockState);
         this.multiblockPattern = getMultiblockPattern();
-        this.southOffsetX = southOffsetX;
-        this.southOffsetY = southOffsetY;
-        this.southOffsetZ = southOffsetZ;
     }
 
     // Loads persistent data from the NBT tag when the world loads
@@ -129,6 +114,23 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     }
 
     public boolean checkMultiblock(Level level, BlockPos blockPos, BlockState blockState) {
-        return multiblockPattern.check(level, blockPos, blockState, southOffsetX, southOffsetY, southOffsetZ);
+        // Pass only necessary parameters to multiblockPattern.check
+        return multiblockPattern.check(level, blockPos, blockState);
+    }
+
+    // Added getter methods for controller offsets, delegating to MultiblockPattern
+    @Override
+    public int getControllerSouthOffsetX() {
+        return multiblockPattern.getControllerSouthOffsetX();
+    }
+
+    @Override
+    public int getControllerSouthOffsetY() {
+        return multiblockPattern.getControllerSouthOffsetY();
+    }
+
+    @Override
+    public int getControllerSouthOffsetZ() {
+        return multiblockPattern.getControllerSouthOffsetZ();
     }
 }
