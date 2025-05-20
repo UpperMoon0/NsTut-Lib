@@ -1,4 +1,4 @@
-name: Build, Publish, and Release Mod
+name: Build and Release Mod
 
 on:
   push:
@@ -28,13 +28,6 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
-      - name: Publish to GitHub Packages
-        run: ./gradlew publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-
       - name: Get Mod Version
         id: get_version
         run: |
@@ -55,11 +48,13 @@ jobs:
             Automatic release triggered by commit ${{ github.sha }} to the main branch.
 
             **Artifacts:**
+            - Common JAR (for developers)
             - Fabric Mod JAR
             - Forge Mod JAR
           draft: false
           prerelease: false
           files: |
+            common/build/libs/nstutlib-common-*.jar 
             forge/build/libs/nstutlib-forge-*.jar
             fabric/build/libs/nstutlib-fabric-*.jar
         env:

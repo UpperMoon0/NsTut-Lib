@@ -1,5 +1,10 @@
+plugins {
+    id 'dev.architectury.common'
+    id 'maven-publish'
+}
+
 architectury {
-    common rootProject.enabled_platforms.split(',')
+    common(rootProject.enabled_platforms.split(','))
 }
 
 dependencies {
@@ -25,5 +30,17 @@ processResources {
 
     filesMatching('META-INF/mods.toml') {
         expand project.properties.subMap(["mod_id", "mod_name", "mod_authors", "mod_description", "mod_license", "mod_version", "loader_version_range", "forge_version_range", "minecraft_version_range"])
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group 
+            artifactId 'nstutlib-common' 
+            version = project.version 
+
+            from components.java
+        }
     }
 }
