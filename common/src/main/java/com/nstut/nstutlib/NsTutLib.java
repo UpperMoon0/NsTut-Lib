@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import com.nstut.nstutlib.creative_tabs.CreativeTabRegistries;
 import com.nstut.nstutlib.items.ItemRegistries;
 import com.nstut.nstutlib.network.PacketRegistries;
+import com.nstut.nstutlib.core.registry.NsTutLibBlockEntities;
+import com.nstut.nstutlib.core.registry.NsTutLibBlocks;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.client.ClientLifecycleEvent; 
 import org.slf4j.Logger;
@@ -16,6 +18,8 @@ public class NsTutLib
 
     public static void init()
     {
+        LOGGER.info("NsTutLib Initializing...");
+
         // Load config
         Config.onLoad(); 
 
@@ -27,13 +31,17 @@ public class NsTutLib
         // Register network packets
         PacketRegistries.register();
 
+        // Register blocks and block entities
+        NsTutLibBlocks.register();
+        NsTutLibBlockEntities.register();
+
         // Register common events
         LifecycleEvent.SERVER_STARTING.register(server -> {
             // Code to run when the server is starting
             LOGGER.info("NsTutLib: Server starting");
         });
 
-        LOGGER.info("NsTutLib common setup complete.");
+        LOGGER.info("NsTutLib Initialization Complete.");
     }
 
     public static void initClient()
