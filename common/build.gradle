@@ -1,5 +1,4 @@
 plugins {
-    id 'dev.architectury.common'
     id 'maven-publish'
 }
 
@@ -37,7 +36,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             groupId = project.group 
-            artifactId 'nstutlib-common' 
+            artifactId = base.archivesName.get() 
             version = project.version 
 
             from components.java
