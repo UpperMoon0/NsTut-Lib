@@ -1,6 +1,5 @@
 package com.nstut.nstutlib.blocks.hatch;
 
-import com.nstut.nstutlib.core.NsTutLibIdentifiers;
 import com.nstut.nstutlib.core.registry.NsTutLibBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -14,6 +13,6 @@ public class OutputItemHatchBlock extends HatchBlock {
 
     @Override
     public BlockEntity newBlockEntity(@NotNull BlockPos pPos, @NotNull BlockState pState) {
-        return NsTutLibBlockEntities.OUTPUT_ITEM_HATCH_BLOCK_ENTITY.get().create(pPos, pState);
+        return NsTutLibBlockEntities.ITEM_HATCH_BLOCK_ENTITY.get().create(pPos, pState);
     }
 }

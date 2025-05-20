@@ -19,7 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.annotation.Nonnull;
 
 public class ForgeFluidHatchBlockEntity extends FluidHatchBlockEntity {
-    private final FluidTank fluidTank = createFluidHandler();
+    private final FluidTank fluidTank = (FluidTank) createFluidHandler(); // Cast to FluidTank
     private final LazyOptional<IFluidHandler> handler = LazyOptional.of(() -> fluidTank);
 
     public ForgeFluidHatchBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -30,8 +30,8 @@ public class ForgeFluidHatchBlockEntity extends FluidHatchBlockEntity {
         this(NsTutLibBlockEntities.FLUID_HATCH_BLOCK_ENTITY.get(), pPos, pBlockState);
     }
 
-    private FluidTank createFluidHandler() {
-        return new FluidTank(FluidHatchBlockEntity.FLUID_CAPACITY) {
+    protected IFluidHandler createFluidHandler() {
+        return new FluidTank((int) FluidHatchBlockEntity.FLUID_CAPACITY_MB) { // Cast to int
             @Override
             protected void onContentsChanged() {
                 setChanged();
@@ -39,11 +39,16 @@ public class ForgeFluidHatchBlockEntity extends FluidHatchBlockEntity {
         };
     }
 
+    // Removed @Override annotation as it's not overriding a supertype method
+    public net.minecraftforge.fluids.FluidStack fluidStackFromPlatform(FluidStack stack) {
+        return new net.minecraftforge.fluids.FluidStack(stack.getFluid(), (int) stack.getAmount(), stack.getTag());
+    }
+
     private net.minecraftforge.fluids.FluidStack toForgeStack(FluidStack stack) {
         if (stack.isEmpty()) {
             return net.minecraftforge.fluids.FluidStack.EMPTY;
         }
-        return new net.minecraftforge.fluids.FluidStack(stack.getFluid(), (int) stack.getAmount(), stack.getNbt());
+        return new net.minecraftforge.fluids.FluidStack(stack.getFluid(), (int) stack.getAmount(), stack.getTag()); // Changed getNbt to getTag
     }
 
     private FluidStack fromForgeStack(net.minecraftforge.fluids.FluidStack stack) {

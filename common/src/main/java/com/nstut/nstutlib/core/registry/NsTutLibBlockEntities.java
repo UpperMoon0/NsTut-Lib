@@ -1,8 +1,12 @@
 package com.nstut.nstutlib.core.registry;
 
 import com.nstut.nstutlib.NsTutLib;
+import com.nstut.nstutlib.blocks.hatch.EnergyHatchBlockEntity;
 import com.nstut.nstutlib.blocks.hatch.FluidHatchBlockEntity;
+import com.nstut.nstutlib.blocks.hatch.InputEnergyHatchBlock;
 import com.nstut.nstutlib.blocks.hatch.ItemHatchBlockEntity;
+import com.nstut.nstutlib.blocks.hatch.OutputEnergyHatchBlock;
+import com.nstut.nstutlib.util.EnergyTier;
 import dev.architectury.injectables.annotations.ExpectPlatform;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
@@ -28,6 +32,22 @@ public class NsTutLibBlockEntities {
                     NsTutLibBlocks.OUTPUT_FLUID_HATCH_BLOCK.get()
             ).build(null));
 
+    public static final RegistrySupplier<BlockEntityType<EnergyHatchBlockEntity>> INPUT_ENERGY_HATCH_BLOCK_ENTITY = BLOCK_ENTITIES.register("input_energy_hatch_block_entity",
+            () -> BlockEntityType.Builder.of((p,s) -> getPlatformSpecificInputEnergyHatchBE(p,s, ((InputEnergyHatchBlock)s.getBlock()).getTier()),
+                    NsTutLibBlocks.INPUT_ENERGY_HATCH_TIER_1_BLOCK.get(),
+                    NsTutLibBlocks.INPUT_ENERGY_HATCH_TIER_2_BLOCK.get(),
+                    NsTutLibBlocks.INPUT_ENERGY_HATCH_TIER_3_BLOCK.get(),
+                    NsTutLibBlocks.INPUT_ENERGY_HATCH_TIER_4_BLOCK.get()
+            ).build(null));
+
+    public static final RegistrySupplier<BlockEntityType<EnergyHatchBlockEntity>> OUTPUT_ENERGY_HATCH_BLOCK_ENTITY = BLOCK_ENTITIES.register("output_energy_hatch_block_entity",
+            () -> BlockEntityType.Builder.of((p,s) -> getPlatformSpecificOutputEnergyHatchBE(p,s, ((OutputEnergyHatchBlock)s.getBlock()).getTier()),
+                    NsTutLibBlocks.OUTPUT_ENERGY_HATCH_TIER_1_BLOCK.get(),
+                    NsTutLibBlocks.OUTPUT_ENERGY_HATCH_TIER_2_BLOCK.get(),
+                    NsTutLibBlocks.OUTPUT_ENERGY_HATCH_TIER_3_BLOCK.get(),
+                    NsTutLibBlocks.OUTPUT_ENERGY_HATCH_TIER_4_BLOCK.get()
+            ).build(null));
+
 
     private static ItemHatchBlockEntity createItemHatchBE(BlockPos pos, BlockState state) {
         return getPlatformSpecificItemHatchBE(pos, state);
@@ -44,6 +64,16 @@ public class NsTutLibBlockEntities {
 
     @ExpectPlatform
     public static FluidHatchBlockEntity getPlatformSpecificFluidHatchBE(BlockPos pos, BlockState state) {
+        throw new AssertionError();
+    }
+
+    @ExpectPlatform
+    public static EnergyHatchBlockEntity getPlatformSpecificInputEnergyHatchBE(BlockPos pos, BlockState state, EnergyTier tier) {
+        throw new AssertionError();
+    }
+
+    @ExpectPlatform
+    public static EnergyHatchBlockEntity getPlatformSpecificOutputEnergyHatchBE(BlockPos pos, BlockState state, EnergyTier tier) {
         throw new AssertionError();
     }
 
