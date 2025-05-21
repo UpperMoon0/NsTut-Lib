@@ -4,6 +4,9 @@
   "block.nstutlib.input_fluid_hatch": "Fluid Input Hatch",
   "block.nstutlib.output_fluid_hatch": "Fluid Output Hatch",
   "block.nstutlib.input_energy_hatch_tier_1": "Energy Input Hatch (Tier I)",
+  "block.nstutlib.input_energy_hatch_tier_2": "Energy Input Hatch (Tier II)",
+  "block.nstutlib.input_energy_hatch_tier_3": "Energy Input Hatch (Tier III)",
+  "block.nstutlib.input_energy_hatch_tier_4": "Energy Input Hatch (Tier IV)",
 
   "itemGroup.nstutlib": "Nstut Library"
 }

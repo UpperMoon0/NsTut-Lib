@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "nstutlib:block/input_energy_hatch_tier_3"
+    },
+    "facing=east": {
+      "model": "nstutlib:block/input_energy_hatch_tier_3",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "nstutlib:block/input_energy_hatch_tier_3",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "nstutlib:block/input_energy_hatch_tier_3",
+      "y": 270
+    }
+  }
+}

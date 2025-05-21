@@ -4,6 +4,9 @@
     "nstutlib:output_item_hatch",
     "nstutlib:input_fluid_hatch",
     "nstutlib:output_fluid_hatch",
-    "nstutlib:input_energy_hatch_tier_1"
+    "nstutlib:input_energy_hatch_tier_1",
+    "nstutlib:input_energy_hatch_tier_2",
+    "nstutlib:input_energy_hatch_tier_3",
+    "nstutlib:input_energy_hatch_tier_4"
   ]
 }

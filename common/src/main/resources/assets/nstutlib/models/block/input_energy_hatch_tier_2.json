@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "nstutlib:block/input_energy_hatch_tier_2",
+    "side": "nstutlib:block/nstutlib_machine_casing",
+    "top": "nstutlib:block/nstutlib_machine_casing"
+  }
+}
