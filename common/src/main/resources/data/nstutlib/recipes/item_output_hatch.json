@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "C": {
-      "item": "biotech:biotech_machine_casing"
+      "item": "minecraft:deepslate"
     },
     "W": {
       "item": "minecraft:chest"
@@ -14,7 +14,7 @@
     "W"
   ],
   "result": {
-    "item": "biotech:item_output_hatch"
+    "item": "nstutlib:item_output_hatch"
   },
   "show_notification": true
 }

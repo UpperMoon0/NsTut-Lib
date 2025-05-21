@@ -1,17 +1,9 @@
 {
   "values": [
-    "biotech:breeding_chamber",
-    "biotech:terrestrial_habitat",
-    "biotech:slaughterhouse",
-    "biotech:greenhouse",
-    "biotech:fermenter",
-    "biotech:mixer",
-
-    "biotech:biotech_machine_casing",
-    "biotech:item_input_hatch",
-    "biotech:item_output_hatch",
-    "biotech:fluid_input_hatch",
-    "biotech:fluid_output_hatch",
-    "biotech:energy_input_hatch"
+    "nstutlib:item_input_hatch",
+    "nstutlib:item_output_hatch",
+    "nstutlib:fluid_input_hatch",
+    "nstutlib:fluid_output_hatch",
+    "nstutlib:energy_input_hatch"
   ]
 }

@@ -52,9 +52,9 @@ public class SmartHammer extends Item {
                     buildStructure(level,
                                 blockPos,
                                 pattern,
-                                machineBlockEntity.getSouthOffsetX(),
-                                machineBlockEntity.getSouthOffsetY(),
-                                machineBlockEntity.getSouthOffsetZ());
+                                machineBlockEntity.getControllerSouthOffsetX(), // Updated to use new getter
+                                machineBlockEntity.getControllerSouthOffsetY(), // Updated to use new getter
+                                machineBlockEntity.getControllerSouthOffsetZ()); // Updated to use new getter
                     return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide());
                 }
             }

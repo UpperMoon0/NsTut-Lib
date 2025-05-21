@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "C": {
-      "item": "biotech:biotech_machine_casing"
+      "item": "minecraft:deepslate"
     },
     "G": {
       "item": "minecraft:glass"
@@ -14,7 +14,7 @@
     "C"
   ],
   "result": {
-    "item": "biotech:fluid_input_hatch"
+    "item": "nstutlib:fluid_input_hatch"
   },
   "show_notification": true
 }

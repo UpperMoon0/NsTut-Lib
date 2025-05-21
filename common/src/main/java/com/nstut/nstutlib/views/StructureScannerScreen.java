@@ -23,14 +23,12 @@ import net.minecraft.world.level.block.state.properties.Property;
 import org.jetbrains.annotations.NotNull;
 
 import dev.architectury.platform.Platform;
-import dev.architectury.registry.registries.DeferredRegister;
 import net.minecraft.core.registries.BuiltInRegistries; 
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files; // Added for Files.createDirectories
 import java.nio.file.Path; // Added for Path object
-import java.nio.file.Paths; // Added for Paths.get
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -224,7 +222,8 @@ public class StructureScannerScreen extends Screen {
             }
 
             // Create a MultiblockPattern object
-            MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray);
+            // Added default offsets (0, 0, 0) to the constructor call
+            MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray, 0, 0, 0);
 
             // Write to files using the new MultiblockPattern object
             writeJson(multiblockPattern);

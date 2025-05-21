@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "biotech:item_input_hatch"
+          "name": "nstutlib:item_input_hatch"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "biotech:blocks/item_input_hatch"
+  "random_sequence": "nstutlib:blocks/item_input_hatch"
 }
