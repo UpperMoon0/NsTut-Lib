@@ -15,8 +15,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.function.BiFunction;
-
 public class NsTutLibBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(NsTutLib.MOD_ID, Registries.BLOCK_ENTITY_TYPE);
 

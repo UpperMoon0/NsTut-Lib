@@ -2,7 +2,7 @@
   "parent": "minecraft:block/orientable",
   "textures": {
     "front": "nstutlib:block/output_item_hatch",
-    "side": "nstutlib:block/nstutlib_machine_casing",
-    "top": "nstutlib:block/nstutlib_machine_casing"
+    "side": "nstutlib:block/machine_casing",
+    "top": "nstutlib:block/machine_casing"
   }
 }

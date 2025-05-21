@@ -7,6 +7,10 @@
   "block.nstutlib.input_energy_hatch_tier_2": "Energy Input Hatch (Tier II)",
   "block.nstutlib.input_energy_hatch_tier_3": "Energy Input Hatch (Tier III)",
   "block.nstutlib.input_energy_hatch_tier_4": "Energy Input Hatch (Tier IV)",
+  "block.nstutlib.output_energy_hatch_tier_1": "Energy Output Hatch (Tier I)",
+  "block.nstutlib.output_energy_hatch_tier_2": "Energy Output Hatch (Tier II)",
+  "block.nstutlib.output_energy_hatch_tier_3": "Energy Output Hatch (Tier III)",
+  "block.nstutlib.output_energy_hatch_tier_4": "Energy Output Hatch (Tier IV)",
 
   "itemGroup.nstutlib": "Nstut Library"
 }

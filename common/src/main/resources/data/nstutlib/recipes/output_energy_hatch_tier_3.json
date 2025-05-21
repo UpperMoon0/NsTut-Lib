@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    "CMC",
+    " C "
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:diamond"
+    },
+    "M": {
+      "item": "nstutlib:output_energy_hatch_tier_2"
+    }
+  },
+  "result": {
+    "item": "nstutlib:output_energy_hatch_tier_3"
+  }
+}

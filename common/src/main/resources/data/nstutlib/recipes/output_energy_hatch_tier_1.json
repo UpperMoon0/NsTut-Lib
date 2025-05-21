@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    "CMC",
+    " C "
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:iron_ingot"
+    },
+    "M": {
+      "item": "nstutlib:machine_casing"
+    }
+  },
+  "result": {
+    "item": "nstutlib:output_energy_hatch_tier_1"
+  }
+}
