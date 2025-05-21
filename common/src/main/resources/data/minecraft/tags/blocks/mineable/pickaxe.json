@@ -1,7 +1,7 @@
 {
   "values": [
-    "nstutlib:item_input_hatch",
-    "nstutlib:item_output_hatch",
+    "nstutlib:input_item_hatch",
+    "nstutlib:output_item_hatch",
     "nstutlib:fluid_input_hatch",
     "nstutlib:fluid_output_hatch",
     "nstutlib:energy_input_hatch"

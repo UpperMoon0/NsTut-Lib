@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "nstutlib:item_input_hatch"
+          "name": "nstutlib:input_item_hatch"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "nstutlib:blocks/item_input_hatch"
+  "random_sequence": "nstutlib:blocks/input_item_hatch"
 }

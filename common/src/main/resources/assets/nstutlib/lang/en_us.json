@@ -1,6 +1,6 @@
 {
-  "block.nstutlib.item_input_hatch": "Item Input Hatch",
-  "block.nstutlib.item_output_hatch": "Item Output Hatch",
+  "block.nstutlib.input_item_hatch": "Item Input Hatch",
+  "block.nstutlib.output_item_hatch": "Item Output Hatch",
   "block.nstutlib.fluid_input_hatch": "Fluid Input Hatch",
   "block.nstutlib.fluid_output_hatch": "Fluid Output Hatch",
   "block.nstutlib.energy_input_hatch": "Energy Input Hatch",
