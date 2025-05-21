@@ -1,6 +1,9 @@
 {
-  "item.nstutlib.smart_hammer": "Smart Hammer",
-  "item.nstutlib.structure_scanner": "Structure Scanner",
+  "block.biotech.item_input_hatch": "Item Input Hatch",
+  "block.biotech.item_output_hatch": "Item Output Hatch",
+  "block.biotech.fluid_input_hatch": "Fluid Input Hatch",
+  "block.biotech.fluid_output_hatch": "Fluid Output Hatch",
+  "block.biotech.energy_input_hatch": "Energy Input Hatch",
 
-  "itemGroup.nstutlib": "Nstut Lib"
+  "itemGroup.nstutlib": "Nstut Library"
 }
