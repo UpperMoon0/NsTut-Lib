@@ -2,8 +2,8 @@
   "values": [
     "nstutlib:input_item_hatch",
     "nstutlib:output_item_hatch",
-    "nstutlib:fluid_input_hatch",
-    "nstutlib:fluid_output_hatch",
-    "nstutlib:energy_input_hatch"
+    "nstutlib:input_fluid_hatch",
+    "nstutlib:output_fluid_hatch",
+    "nstutlib:input_energy_hatch_tier_1"
   ]
 }

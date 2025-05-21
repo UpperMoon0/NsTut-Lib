@@ -1,9 +1,9 @@
 {
   "block.nstutlib.input_item_hatch": "Item Input Hatch",
   "block.nstutlib.output_item_hatch": "Item Output Hatch",
-  "block.nstutlib.fluid_input_hatch": "Fluid Input Hatch",
-  "block.nstutlib.fluid_output_hatch": "Fluid Output Hatch",
-  "block.nstutlib.energy_input_hatch": "Energy Input Hatch",
+  "block.nstutlib.input_fluid_hatch": "Fluid Input Hatch",
+  "block.nstutlib.output_fluid_hatch": "Fluid Output Hatch",
+  "block.nstutlib.input_energy_hatch_tier_1": "Energy Input Hatch (Tier I)",
 
   "itemGroup.nstutlib": "Nstut Library"
 }

@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/orientable",
   "textures": {
-    "front": "nstutlib:block/fluid_output_hatch",
+    "front": "nstutlib:block/output_fluid_hatch",
     "side": "nstutlib:block/nstutlib_machine_casing",
     "top": "nstutlib:block/nstutlib_machine_casing"
   }

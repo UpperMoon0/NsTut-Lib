@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "nstutlib:fluid_output_hatch"
+          "name": "nstutlib:output_fluid_hatch"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "nstutlib:blocks/fluid_output_hatch"
+  "random_sequence": "nstutlib:blocks/output_fluid_hatch"
 }

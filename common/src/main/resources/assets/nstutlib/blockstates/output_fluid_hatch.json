@@ -1,18 +1,18 @@
 {
   "variants": {
     "facing=north": {
-      "model": "nstutlib:block/fluid_output_hatch"
+      "model": "nstutlib:block/output_fluid_hatch"
     },
     "facing=east": {
-      "model": "nstutlib:block/fluid_output_hatch",
+      "model": "nstutlib:block/output_fluid_hatch",
       "y": 90
     },
     "facing=south": {
-      "model": "nstutlib:block/fluid_output_hatch",
+      "model": "nstutlib:block/output_fluid_hatch",
       "y": 180
     },
     "facing=west": {
-      "model": "nstutlib:block/fluid_output_hatch",
+      "model": "nstutlib:block/output_fluid_hatch",
       "y": 270
     }
   }
