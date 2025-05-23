@@ -27,15 +27,15 @@ import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files; // Added for Files.createDirectories
-import java.nio.file.Path; // Added for Path object
+import java.nio.file.Files; 
+import java.nio.file.Path; 
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class StructureScannerScreen extends Screen {
-    private static final String SCRIPT_OUTPUT_DIR_NAME = "nstut_script_output"; // Define directory name
-    private static final Path SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve(SCRIPT_OUTPUT_DIR_NAME); // Use Path object
+    private static final String SCRIPT_OUTPUT_DIR_NAME = "nstut_script_output"; 
+    private static final Path SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve(SCRIPT_OUTPUT_DIR_NAME); 
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
     private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/blank.png");
 

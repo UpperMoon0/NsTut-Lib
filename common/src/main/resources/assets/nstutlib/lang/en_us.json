@@ -12,5 +12,8 @@
   "block.nstutlib.output_energy_hatch_tier_3": "Energy Output Hatch (Tier III)",
   "block.nstutlib.output_energy_hatch_tier_4": "Energy Output Hatch (Tier IV)",
 
+  "item.nstutlib.smart_hammer": "Smart Hammer",
+  "item.nstutlib.structure_scanner": "Structure Scanner",
+
   "itemGroup.nstutlib": "Nstut Library"
 }
