@@ -46,22 +46,14 @@ public class NsTutLibBlockEntities {
                     NsTutLibBlocks.OUTPUT_ENERGY_HATCH_TIER_4_BLOCK.get()
             ).build(null));
 
-
-    private static ItemHatchBlockEntity createItemHatchBE(BlockPos pos, BlockState state) {
-        return getPlatformSpecificItemHatchBE(pos, state);
-    }
-
-    private static FluidHatchBlockEntity createFluidHatchBE(BlockPos pos, BlockState state) {
-        return getPlatformSpecificFluidHatchBE(pos, state);
-    }
-
+    // Platform-specific factory methods, using @ExpectPlatform
     @ExpectPlatform
-    public static ItemHatchBlockEntity getPlatformSpecificItemHatchBE(BlockPos pos, BlockState state) {
+    public static ItemHatchBlockEntity createItemHatchBE(BlockPos pos, BlockState state) {
         throw new AssertionError();
     }
 
     @ExpectPlatform
-    public static FluidHatchBlockEntity getPlatformSpecificFluidHatchBE(BlockPos pos, BlockState state) {
+    public static FluidHatchBlockEntity createFluidHatchBE(BlockPos pos, BlockState state) {
         throw new AssertionError();
     }
 
