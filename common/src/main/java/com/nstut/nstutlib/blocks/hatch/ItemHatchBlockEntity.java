@@ -11,6 +11,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 
+// Added import for ItemHatchMenu
+import com.nstut.nstutlib.menu.ItemHatchMenu;
+import net.minecraft.world.entity.player.Inventory; // Added for createMenu
+import net.minecraft.world.inventory.AbstractContainerMenu; // Added for createMenu
+
 public abstract class ItemHatchBlockEntity extends HatchBlockEntity implements IItemStorage, Container { // Implemented Container
     public static final int ITEM_SLOT_COUNT = 9;
     protected NonNullList<ItemStack> items = NonNullList.withSize(ITEM_SLOT_COUNT, ItemStack.EMPTY);
@@ -80,5 +85,11 @@ public abstract class ItemHatchBlockEntity extends HatchBlockEntity implements I
     @Override
     public int getMaxStackSize() {
         return 64; // Default Minecraft max stack size
+    }
+
+    // Add createMenu override
+    @Override
+    public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
+        return new ItemHatchMenu(pContainerId, pPlayerInventory, this, pPlayer);
     }
 }

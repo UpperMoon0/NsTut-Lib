@@ -1,43 +1,46 @@
 package com.nstut.nstutlib.menu;
 
 import com.nstut.nstutlib.blocks.hatch.HatchBlockEntity;
-import com.nstut.nstutlib.blocks.hatch.ItemHatchBlockEntity;
+// import com.nstut.nstutlib.blocks.hatch.ItemHatchBlockEntity; // Will be used in ItemHatchMenu
 import com.nstut.nstutlib.core.registry.NsTutLibMenuTypes;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-public class HatchMenu extends AbstractContainerMenu {
-    private final HatchBlockEntity hatchBlockEntity;
-    private static final int PLAYER_INVENTORY_ROWS = 3;
-    private static final int PLAYER_INVENTORY_COLUMNS = 9;
-    private static final int PLAYER_HOTBAR_SLOTS = 9;
-    private static final int PLAYER_INVENTORY_X_OFFSET = 8;
-    private static final int PLAYER_INVENTORY_Y_OFFSET = 84; 
-    private static final int HATCH_INVENTORY_X_OFFSET = 8;
-    private static final int HATCH_INVENTORY_Y_OFFSET = 18; 
+public abstract class HatchMenu extends AbstractContainerMenu {
+    protected final HatchBlockEntity hatchBlockEntity;
+    protected static final int PLAYER_INVENTORY_ROWS = 3;
+    protected static final int PLAYER_INVENTORY_COLUMNS = 9;
+    protected static final int PLAYER_HOTBAR_SLOTS = 9;
+    protected static final int PLAYER_INVENTORY_X_OFFSET = 8;
+    protected static final int PLAYER_INVENTORY_Y_OFFSET = 84;
+    // HATCH_INVENTORY_X_OFFSET and Y_OFFSET will be defined in subclasses or passed to addHatchSlots
 
     // Constructor for server-side
-    public HatchMenu(int windowId, Inventory playerInventory, HatchBlockEntity hatchBlockEntity) {
-        super(NsTutLibMenuTypes.HATCH_MENU.get(), windowId);
+    protected HatchMenu(MenuType<?> menuType, int windowId, Inventory playerInventory, HatchBlockEntity hatchBlockEntity) {
+        super(menuType, windowId);
         this.hatchBlockEntity = hatchBlockEntity;
 
-        // Add hatch inventory slots if it's an ItemHatchBlockEntity
-        if (hatchBlockEntity instanceof ItemHatchBlockEntity itemHatch) {
-            int slotCount = itemHatch.getContainerSize(); // Assuming getContainerSize() exists or can be added
-            for (int i = 0; i < slotCount; ++i) {
-                // Adjust x and y position as needed for your GUI layout
-                // For a 3x3 grid like ItemHatchBlockEntity.ITEM_SLOT_COUNT = 9
-                int x = HATCH_INVENTORY_X_OFFSET + (i % 3) * 18;
-                int y = HATCH_INVENTORY_Y_OFFSET + (i / 3) * 18;
-                this.addSlot(new Slot(itemHatch, i, x, y));
-            }
-        }
+        addHatchSlots(playerInventory); // Call abstract method
+        addPlayerInventorySlots(playerInventory);
+    }
 
+    // Constructor for client-side (called via MenuRegistry.of)
+    // This constructor will be called by subclasses
+    protected HatchMenu(MenuType<?> menuType, int windowId, Inventory playerInventory, FriendlyByteBuf friendlyByteBuf) {
+        this(menuType, windowId, playerInventory, getBlockEntity(playerInventory, friendlyByteBuf));
+    }
+
+    protected abstract void addHatchSlots(Inventory playerInventory);
+    protected abstract int getHatchSlotCount();
+
+
+    private void addPlayerInventorySlots(Inventory playerInventory) {
         // Player inventory
         for (int row = 0; row < PLAYER_INVENTORY_ROWS; ++row) {
             for (int col = 0; col < PLAYER_INVENTORY_COLUMNS; ++col) {
@@ -50,11 +53,6 @@ public class HatchMenu extends AbstractContainerMenu {
         for (int i = 0; i < PLAYER_HOTBAR_SLOTS; ++i) {
             this.addSlot(new Slot(playerInventory, i, PLAYER_INVENTORY_X_OFFSET + i * 18, PLAYER_INVENTORY_Y_OFFSET + 58));
         }
-    }
-
-    // Constructor for client-side (called via MenuRegistry.of)
-    public HatchMenu(int windowId, Inventory playerInventory, FriendlyByteBuf friendlyByteBuf) {
-        this(windowId, playerInventory, getBlockEntity(playerInventory, friendlyByteBuf));
     }
 
     private static HatchBlockEntity getBlockEntity(Inventory playerInventory, FriendlyByteBuf friendlyByteBuf) {
@@ -73,26 +71,36 @@ public class HatchMenu extends AbstractContainerMenu {
             ItemStack slotStack = slot.getItem();
             itemstack = slotStack.copy();
 
-            // Number of slots in the hatch inventory
-            int hatchSlotCount = (hatchBlockEntity instanceof ItemHatchBlockEntity itemHatch) ? itemHatch.getContainerSize() : 0;
+            int hatchSlotCount = getHatchSlotCount();
+            int playerInventoryStartIndex = hatchSlotCount;
+            int playerHotbarStartIndex = playerInventoryStartIndex + PLAYER_INVENTORY_ROWS * PLAYER_INVENTORY_COLUMNS;
+            int totalSlots = this.slots.size();
 
             if (pIndex < hatchSlotCount) { // Moving from hatch to player inventory
-                if (!this.moveItemStackTo(slotStack, hatchSlotCount, this.slots.size(), true)) {
+                if (!this.moveItemStackTo(slotStack, playerInventoryStartIndex, totalSlots, true)) {
                     return ItemStack.EMPTY;
                 }
-            } else { // Moving from player inventory to hatch
-                if (hatchBlockEntity instanceof ItemHatchBlockEntity) { // Only if it's an item hatch
+            } else { // Moving from player inventory to hatch or within player inventory
+                if (hatchSlotCount > 0 && pIndex >= playerInventoryStartIndex) { // Attempt to move to hatch slots
                     if (!this.moveItemStackTo(slotStack, 0, hatchSlotCount, false)) {
-                        return ItemStack.EMPTY;
+                        // If failed to move to hatch, try moving within player inventory
+                        if (pIndex < playerHotbarStartIndex) { // From main player inventory to hotbar
+                            if (!this.moveItemStackTo(slotStack, playerHotbarStartIndex, totalSlots, false)) {
+                                return ItemStack.EMPTY;
+                            }
+                        } else { // From hotbar to main player inventory
+                            if (!this.moveItemStackTo(slotStack, playerInventoryStartIndex, playerHotbarStartIndex, false)) {
+                                return ItemStack.EMPTY;
+                            }
+                        }
                     }
-                } else { // If not an item hatch, or trying to move to a non-item hatch slot
-                    // If moving from player inventory to player inventory (e.g. main to hotbar)
-                    if (pIndex < this.slots.size() - PLAYER_HOTBAR_SLOTS) { // from main player inv
-                         if (!this.moveItemStackTo(slotStack, this.slots.size() - PLAYER_HOTBAR_SLOTS, this.slots.size(), false)) { // to hotbar
+                } else { // Moving within player inventory (no hatch slots or not targeting them)
+                    if (pIndex < playerHotbarStartIndex) { // From main player inventory to hotbar
+                        if (!this.moveItemStackTo(slotStack, playerHotbarStartIndex, totalSlots, false)) {
                             return ItemStack.EMPTY;
                         }
-                    } else { // from hotbar
-                        if (!this.moveItemStackTo(slotStack, hatchSlotCount, this.slots.size() - PLAYER_HOTBAR_SLOTS, false)) { // to main player inv
+                    } else { // From hotbar to main player inventory
+                        if (!this.moveItemStackTo(slotStack, playerInventoryStartIndex, playerHotbarStartIndex, false)) {
                             return ItemStack.EMPTY;
                         }
                     }

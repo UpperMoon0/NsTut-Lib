@@ -45,9 +45,7 @@ public abstract class HatchBlockEntity extends BlockEntity implements ExtendedMe
 
     @Nullable
     @Override
-    public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
-        return new HatchMenu(pContainerId, pPlayerInventory, this);
-    }
+    public abstract AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer);
 
     @Override
     public void saveExtraData(FriendlyByteBuf buf) {
