@@ -37,7 +37,7 @@ public class StructureScannerScreen extends Screen {
     private static final String SCRIPT_OUTPUT_DIR_NAME = "nstut_script_output"; // Define directory name
     private static final Path SCRIPT_OUTPUT_PATH = Platform.getGameFolder().resolve(SCRIPT_OUTPUT_DIR_NAME); // Use Path object
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
-    private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/blank.png");
 
     private final Level level;
 
