@@ -13,6 +13,8 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.EnergyStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import net.minecraft.network.FriendlyByteBuf;
+import javax.annotation.Nonnull;
 
 public class ForgeEnergyHatchBlockEntity extends EnergyHatchBlockEntity {
     private final EnergyStorage energyStorage;
@@ -24,23 +26,29 @@ public class ForgeEnergyHatchBlockEntity extends EnergyHatchBlockEntity {
         this.isInput = isInput;
         this.energyStorage = new EnergyStorage(tier.getCapacity(), tier.getTransferRate(), tier.getTransferRate()) {
             @Override
-            public int receiveEnergy(int maxReceive, boolean simulate) {
-                if (!ForgeEnergyHatchBlockEntity.this.isInput) return 0;
-                int energyReceived = super.receiveEnergy(maxReceive, simulate);
-                if (energyReceived > 0 && !simulate) {
-                    setChanged();
+            public int extractEnergy(int maxExtract, boolean simulate) {
+                if (!ForgeEnergyHatchBlockEntity.this.canExtract()) {
+                    return 0;
                 }
-                return energyReceived;
+                return super.extractEnergy(maxExtract, simulate);
             }
 
             @Override
-            public int extractEnergy(int maxExtract, boolean simulate) {
-                if (ForgeEnergyHatchBlockEntity.this.isInput) return 0;
-                int energyExtracted = super.extractEnergy(maxExtract, simulate);
-                if (energyExtracted > 0 && !simulate) {
-                    setChanged();
+            public int receiveEnergy(int maxReceive, boolean simulate) {
+                if (!ForgeEnergyHatchBlockEntity.this.canReceive()) {
+                    return 0;
                 }
-                return energyExtracted;
+                return super.receiveEnergy(maxReceive, simulate);
+            }
+
+            @Override
+            public boolean canExtract() {
+                return ForgeEnergyHatchBlockEntity.this.isInput ? false : super.canExtract();
+            }
+
+            @Override
+            public boolean canReceive() {
+                return ForgeEnergyHatchBlockEntity.this.isInput ? super.canReceive() : false;
             }
         };
         this.energyStorageLazyOptional = LazyOptional.of(() -> this.energyStorage);
@@ -92,16 +100,19 @@ public class ForgeEnergyHatchBlockEntity extends EnergyHatchBlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
+    protected void saveAdditional(@Nonnull CompoundTag tag) {
         super.saveAdditional(tag);
         tag.put("Energy", energyStorage.serializeNBT());
     }
 
     @Override
-    public void load(CompoundTag tag) {
+    public void load(@Nonnull CompoundTag tag) {
         super.load(tag);
-        if (tag.contains("Energy")) {
-            energyStorage.deserializeNBT(tag.get("Energy"));
-        }
+        energyStorage.deserializeNBT(tag.get("Energy"));
+    }
+
+    @Override
+    public void saveExtraData(FriendlyByteBuf buf) {
+        buf.writeBlockPos(worldPosition);
     }
 }

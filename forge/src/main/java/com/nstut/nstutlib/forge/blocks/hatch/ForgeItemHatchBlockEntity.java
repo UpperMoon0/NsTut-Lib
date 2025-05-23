@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -149,5 +150,10 @@ public class ForgeItemHatchBlockEntity extends ItemHatchBlockEntity {
     public void reviveCaps() {
         super.reviveCaps();
         // No need to re-create handler here as it's tied to itemHandler which persists
+    }
+
+    @Override
+    public void saveExtraData(FriendlyByteBuf buf) {
+        buf.writeBlockPos(worldPosition);
     }
 }

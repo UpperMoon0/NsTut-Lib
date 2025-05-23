@@ -9,6 +9,8 @@ import com.nstut.nstutlib.core.registry.NsTutLibBlocks;
 import com.nstut.nstutlib.core.registry.NsTutLibMenuTypes;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.client.ClientLifecycleEvent; 
+import dev.architectury.registry.menu.MenuRegistry;
+import com.nstut.nstutlib.views.screens.HatchScreen;
 import org.slf4j.Logger;
 
 public class NsTutLib
@@ -49,6 +51,7 @@ public class NsTutLib
     public static void initClient()
     {
         ClientLifecycleEvent.CLIENT_SETUP.register(minecraft -> { 
+            MenuRegistry.registerScreenFactory(NsTutLibMenuTypes.HATCH_MENU.get(), HatchScreen::new);
             LOGGER.info("NsTutLib client setup complete.");
         });
     }

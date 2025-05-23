@@ -6,6 +6,7 @@ import dev.architectury.fluid.FluidStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
@@ -132,11 +133,17 @@ public class ForgeFluidHatchBlockEntity extends FluidHatchBlockEntity {
     @Override
     public void invalidateCaps() {
         super.invalidateCaps();
-        handler.invalidate();
+        this.handler.invalidate(); // Corrected from revive() to invalidate()
     }
 
     @Override
     public void reviveCaps() {
         super.reviveCaps();
+        // Removed this.handler.revive() as it's not a valid method for LazyOptional
+    }
+
+    @Override
+    public void saveExtraData(FriendlyByteBuf buf) {
+        buf.writeBlockPos(worldPosition);
     }
 }
