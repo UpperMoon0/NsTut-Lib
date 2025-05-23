@@ -6,6 +6,7 @@ import com.nstut.nstutlib.items.ItemRegistries;
 import com.nstut.nstutlib.network.PacketRegistries;
 import com.nstut.nstutlib.core.registry.NsTutLibBlockEntities;
 import com.nstut.nstutlib.core.registry.NsTutLibBlocks;
+import com.nstut.nstutlib.core.registry.NsTutLibMenuTypes;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.client.ClientLifecycleEvent; 
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ public class NsTutLib
         // Register blocks and block entities
         NsTutLibBlocks.register();
         NsTutLibBlockEntities.register();
+        NsTutLibMenuTypes.register();
 
         // Register common events
         LifecycleEvent.SERVER_STARTING.register(server -> {

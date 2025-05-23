@@ -8,7 +8,6 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player; 
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -18,6 +17,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import dev.architectury.registry.menu.MenuRegistry;
+import net.minecraft.server.level.ServerPlayer;
+import dev.architectury.registry.menu.ExtendedMenuProvider;
 
 public abstract class HatchBlock extends BaseEntityBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -53,8 +55,8 @@ public abstract class HatchBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
         if (!pLevel.isClientSide) {
             BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
-            if (blockEntity instanceof MenuProvider menuProvider) {
-                pPlayer.openMenu(menuProvider);
+            if (blockEntity instanceof ExtendedMenuProvider menuProvider) {
+                MenuRegistry.openExtendedMenu((ServerPlayer) pPlayer, menuProvider);
                 return InteractionResult.CONSUME;
             }
         }

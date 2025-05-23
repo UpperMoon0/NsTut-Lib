@@ -3,7 +3,6 @@ package com.nstut.nstutlib.blocks.hatch;
 import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -11,9 +10,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
-import com.nstut.nstutlib.menu.HatchMenu; // Added import
+import com.nstut.nstutlib.menu.HatchMenu; 
+import dev.architectury.registry.menu.ExtendedMenuProvider; 
+import net.minecraft.network.FriendlyByteBuf; 
 
-public abstract class HatchBlockEntity extends BlockEntity implements MenuProvider { // Implemented MenuProvider
+public abstract class HatchBlockEntity extends BlockEntity implements ExtendedMenuProvider { 
 
     @Nullable
     protected MachineBlockEntity controller;
@@ -46,6 +47,11 @@ public abstract class HatchBlockEntity extends BlockEntity implements MenuProvid
     @Override
     public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
         return new HatchMenu(pContainerId, pPlayerInventory, this);
+    }
+
+    @Override
+    public void saveExtraData(FriendlyByteBuf buf) {
+        buf.writeBlockPos(worldPosition);
     }
 
     // Added for HatchMenu stillValid
