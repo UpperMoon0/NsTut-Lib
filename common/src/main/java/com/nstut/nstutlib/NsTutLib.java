@@ -48,11 +48,16 @@ public class NsTutLib
         LOGGER.info("NsTutLib Initialization Complete.");
     }
 
+    public static void registerScreens() {
+        MenuRegistry.registerScreenFactory(NsTutLibMenuTypes.HATCH_MENU.get(), HatchScreen::new);
+        LOGGER.info("NsTutLib screen factories registered.");
+    }
+
     public static void initClient()
     {
         ClientLifecycleEvent.CLIENT_SETUP.register(minecraft -> { 
-            MenuRegistry.registerScreenFactory(NsTutLibMenuTypes.HATCH_MENU.get(), HatchScreen::new);
-            LOGGER.info("NsTutLib client setup complete.");
+            // Screen factory registration was moved to registerScreens()
+            LOGGER.info("NsTutLib client setup complete (via ClientLifecycleEvent.CLIENT_SETUP).");
         });
     }
 
