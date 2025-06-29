@@ -20,6 +20,29 @@ public class MultiblockPattern {
         this.pattern = pattern;
     }
 
+    public MultiblockPattern(java.util.List<java.util.List<java.util.List<String>>> stringPattern) {
+        int height = stringPattern.size();
+        int depth = stringPattern.get(0).size();
+        int width = stringPattern.get(0).get(0).size();
+        this.pattern = new MultiblockBlock[height][depth][width];
+
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < depth; z++) {
+                for (int x = 0; x < width; x++) {
+                    String blockId = stringPattern.get(y).get(z).get(x);
+                    if (!blockId.equals("air")) { // Assuming "air" means no block
+                        // You'll need a way to get a Block object from a string ID.
+                        // This might involve a registry lookup or a custom mapping.
+                        // For now, let's assume MultiblockBlock can be created with a string ID.
+                        this.pattern[y][z][x] = new MultiblockBlock(blockId);
+                    } else {
+                        this.pattern[y][z][x] = null; // Represent air as null
+                    }
+                }
+            }
+        }
+    }
+
     public boolean check(Level level,
                          BlockPos controllerPos,
                          BlockState blockState,
