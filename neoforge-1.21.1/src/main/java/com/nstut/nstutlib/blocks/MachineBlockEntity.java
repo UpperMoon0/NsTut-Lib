@@ -160,12 +160,14 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             }
             isStructureValid = true;
 
-            Stream<R> candidates = level.getRecipeManager().getAllRecipesFor(recipeType).stream()
-                    .map(RecipeHolder::value)
-                    .filter(recipe -> recipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks));
-            Optional<R> nextRecipe = recipePreference == null ? candidates.findFirst() : candidates.max(recipePreference);
+            Stream<RecipeHolder<R>> candidates = level.getRecipeManager().getAllRecipesFor(recipeType).stream()
+                    .filter(holder -> holder.value().recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks));
+            Optional<RecipeHolder<R>> nextRecipe = recipePreference == null
+                    ? candidates.findFirst()
+                    : candidates.max((left, right) -> recipePreference.compare(left.value(), right.value()));
             if (nextRecipe.isEmpty()) return;
-            startRecipe(nextRecipe.get());
+            RecipeHolder<R> holder = nextRecipe.get();
+            startRecipe(holder.id(), holder.value());
             structureCheckCooldown = ACTIVE_STRUCTURE_CHECK_INTERVAL;
         }
 
@@ -228,9 +230,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private void startRecipe(ModRecipe<?> recipe) {
+    private void startRecipe(ResourceLocation recipeId, ModRecipe<?> recipe) {
         recipeHandler = Optional.of(recipe);
-        activeRecipeId = recipe.getId();
+        activeRecipeId = recipeId;
         activeItemOutputIndexes = recipe.rollItemOutputIndexes();
         recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
         energyConsumed = 0;
