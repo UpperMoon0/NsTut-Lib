@@ -129,7 +129,7 @@ public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> 
                     for (int i = 0; i < array.size(); i++) {
                         JsonObject object = array.get(i).getAsJsonObject();
                         ItemStack stack = readItemStack(object.getAsJsonObject("itemStack"));
-                        boolean consumable = !object.has("isConsumable") || object.get("isConsumable").getAsBoolean();
+                        boolean consumable = object.has("isConsumable") && object.get("isConsumable").getAsBoolean();
                         items[i] = new IngredientItem(stack, consumable);
                     }
                     return items;

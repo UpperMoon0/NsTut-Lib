@@ -11,7 +11,9 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.IItemHandlerModifiable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -265,6 +267,19 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     }
 
     public void assemble(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
+        if (!canFitOutputs(outputSlots, outputTanks)) {
+            throw new IllegalStateException("Recipe outputs no longer fit: " + id);
+        }
+        MutableStateSnapshot snapshot = MutableStateSnapshot.capture(outputSlots, outputTanks, id, "output");
+        try {
+            assembleUnchecked(outputSlots, outputTanks);
+        } catch (RuntimeException failure) {
+            snapshot.rollback(failure);
+            throw new IllegalStateException("Recipe output transaction rolled back: " + id, failure);
+        }
+    }
+
+    private void assembleUnchecked(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
         if (outputSlots != null) {
             for (OutputItem output : recipe.getOutputItems()) {
                 float chance = output.getChance();
@@ -295,7 +310,10 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 FluidStack portion = remaining.copy();
                 portion.setAmount(Math.min(accepted, remaining.getAmount()));
                 int filled = handler.fill(portion, IFluidHandler.FluidAction.EXECUTE);
-                remaining.shrink(Math.max(0, filled));
+                if (filled != portion.getAmount()) {
+                    throw new IllegalStateException("Fluid output handler diverged during recipe commit: " + id);
+                }
+                remaining.shrink(filled);
             }
             if (!remaining.isEmpty()) {
                 throw new IllegalStateException("Output fluid handlers changed during recipe commit: " + id);
@@ -308,6 +326,17 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             return false;
         }
 
+        MutableStateSnapshot snapshot = MutableStateSnapshot.capture(inputSlots, inputTanks, id, "input");
+        try {
+            consumeIngredientsUnchecked(inputSlots, inputTanks);
+            return true;
+        } catch (RuntimeException failure) {
+            snapshot.rollback(failure);
+            throw new IllegalStateException("Recipe input transaction rolled back: " + id, failure);
+        }
+    }
+
+    private void consumeIngredientsUnchecked(IItemHandler inputSlots, List<IFluidHandler> inputTanks) {
         for (IngredientItem ingredient : recipe.getIngredientItems()) {
             if (!ingredient.isConsumable()) {
                 continue;
@@ -320,6 +349,9 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     continue;
                 }
                 ItemStack extracted = inputSlots.extractItem(slot, remaining, false);
+                if (!extracted.isEmpty() && !ItemStack.isSameItemSameTags(required, extracted)) {
+                    throw new IllegalStateException("Item input handler returned the wrong stack during recipe commit: " + id);
+                }
                 remaining -= extracted.getCount();
             }
             if (remaining > 0) {
@@ -336,6 +368,9 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 FluidStack request = ingredient.copy();
                 request.setAmount(remaining);
                 FluidStack drained = handler.drain(request, IFluidHandler.FluidAction.EXECUTE);
+                if (!drained.isEmpty() && !sameFluid(ingredient, drained)) {
+                    throw new IllegalStateException("Fluid input handler returned the wrong fluid during recipe commit: " + id);
+                }
                 if (sameFluid(ingredient, drained)) {
                     remaining -= drained.getAmount();
                 }
@@ -344,7 +379,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 throw new IllegalStateException("Fluid input handler changed during recipe commit: " + id);
             }
         }
-        return true;
     }
 
     public void consumeIngredients(IItemHandler inputSlots, List<IFluidHandler> inputTanks) {
@@ -383,6 +417,63 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
     @Override
     public boolean canCraftInDimensions(int width, int height) {
         return true;
+    }
+
+    private static final class MutableStateSnapshot {
+        private final IItemHandlerModifiable items;
+        private final ItemStack[] itemStacks;
+        private final List<FluidState> fluids;
+
+        private MutableStateSnapshot(IItemHandlerModifiable items, ItemStack[] itemStacks, List<FluidState> fluids) {
+            this.items = items;
+            this.itemStacks = itemStacks;
+            this.fluids = fluids;
+        }
+
+        private static MutableStateSnapshot capture(IItemHandler itemHandler,
+                                                    List<IFluidHandler> fluidHandlers,
+                                                    ResourceLocation recipeId,
+                                                    String phase) {
+            IItemHandlerModifiable mutableItems = null;
+            ItemStack[] itemStacks = new ItemStack[0];
+            if (itemHandler != null) {
+                if (!(itemHandler instanceof IItemHandlerModifiable modifiable)) {
+                    throw new IllegalStateException("Transactional " + phase + " item handler is not restorable for recipe " + recipeId);
+                }
+                mutableItems = modifiable;
+                itemStacks = new ItemStack[itemHandler.getSlots()];
+                for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
+                    itemStacks[slot] = itemHandler.getStackInSlot(slot).copy();
+                }
+            }
+
+            List<FluidState> fluids = new ArrayList<>();
+            for (IFluidHandler handler : safeFluidHandlers(fluidHandlers)) {
+                if (!(handler instanceof FluidTank tank)) {
+                    throw new IllegalStateException("Transactional " + phase + " fluid handler is not restorable for recipe " + recipeId);
+                }
+                fluids.add(new FluidState(tank, tank.getFluid().copy()));
+            }
+            return new MutableStateSnapshot(mutableItems, itemStacks, fluids);
+        }
+
+        private void rollback(RuntimeException originalFailure) {
+            try {
+                if (items != null) {
+                    for (int slot = 0; slot < itemStacks.length; slot++) {
+                        items.setStackInSlot(slot, itemStacks[slot].copy());
+                    }
+                }
+                for (FluidState fluid : fluids) {
+                    fluid.tank.setFluid(fluid.stack.copy());
+                }
+            } catch (RuntimeException rollbackFailure) {
+                originalFailure.addSuppressed(rollbackFailure);
+            }
+        }
+    }
+
+    private record FluidState(FluidTank tank, FluidStack stack) {
     }
 
     private static final class VirtualFluidTank {
