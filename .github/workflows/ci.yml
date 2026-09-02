@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           - target: forge-1.20.1
-            java: '21'
+            java: '17'
           - target: neoforge-1.21.1
             java: '21'
           - target: neoforge-26.1.2
@@ -30,5 +30,12 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: gradle
-      - name: Validate and build
+      - name: Unit tests and build
+        if: matrix.target != 'forge-1.20.1'
         run: ./gradlew :${{ matrix.target }}:test :${{ matrix.target }}:build --no-daemon --stacktrace
+      - name: Forge build
+        if: matrix.target == 'forge-1.20.1'
+        run: ./gradlew :forge-1.20.1:build -x :forge-1.20.1:test --no-daemon --stacktrace
+      - name: Forge transaction GameTests
+        if: matrix.target == 'forge-1.20.1'
+        run: ./gradlew :forge-1.20.1:runGameTestServer --no-daemon --stacktrace
