@@ -1,11 +1,13 @@
 package com.nstut.nstutlib.recipes;
 
 import net.minecraft.SharedConstants;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
@@ -25,12 +27,13 @@ class ModRecipeTransactionTest {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
 
-        // 26.1 defers item default-component binding to datapack reload. The ModDev
-        // unit-test runtime does not perform that reload, so bind the real common
-        // vanilla defaults only for the simple stackable items exercised here.
+        // 26.1 defers holder default-component binding to datapack/registry finalization.
+        // The ModDev unit-test runtime does not perform that phase, so bind only the
+        // vanilla defaults exercised by these tests. Vanilla water has no defaults.
         Items.DIAMOND.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
         Items.EMERALD.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
         Items.GOLD_INGOT.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
+        Fluids.WATER.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
     }
 
     @Test
@@ -45,7 +48,7 @@ class ModRecipeTransactionTest {
     @Test
     void rollsBackPartialFluidOutputCommit() {
         TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[0], new FluidStack[0],
-                new FluidStack[] {new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1500)});
+                new FluidStack[] {new FluidStack(Fluids.WATER, 1500)});
         FluidTank first = new FluidTank(1000);
         FluidTank second = new DivergingFluidTank(1000);
         assertThrows(RecipeTransactionException.class, () -> recipe.assemble(null, List.of(first, second)));
