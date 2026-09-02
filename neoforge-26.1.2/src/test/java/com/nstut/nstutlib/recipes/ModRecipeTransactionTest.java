@@ -1,6 +1,8 @@
 package com.nstut.nstutlib.recipes;
 
 import net.minecraft.SharedConstants;
+import net.minecraft.data.registries.VanillaRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
@@ -23,6 +25,8 @@ class ModRecipeTransactionTest {
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup())
+                .forEach(pendingComponents -> pendingComponents.apply());
     }
 
     @Test
