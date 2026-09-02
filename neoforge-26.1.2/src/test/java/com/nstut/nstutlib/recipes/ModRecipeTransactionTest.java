@@ -1,8 +1,7 @@
 package com.nstut.nstutlib.recipes;
 
 import net.minecraft.SharedConstants;
-import net.minecraft.data.registries.VanillaRegistries;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
@@ -25,8 +24,13 @@ class ModRecipeTransactionTest {
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup())
-                .forEach(pendingComponents -> pendingComponents.apply());
+
+        // 26.1 defers item default-component binding to datapack reload. The ModDev
+        // unit-test runtime does not perform that reload, so bind the real common
+        // vanilla defaults only for the simple stackable items exercised here.
+        Items.DIAMOND.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
+        Items.EMERALD.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
+        Items.GOLD_INGOT.builtInRegistryHolder().bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
     }
 
     @Test
