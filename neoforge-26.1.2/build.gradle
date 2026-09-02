@@ -29,7 +29,14 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
-test { useJUnitPlatform() }
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+        showStandardStreams = true
+    }
+}
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def p = [mod_id: rootProject.mod_id, mod_name: rootProject.mod_name, mod_version: rootProject.mod_version,
              mod_description: rootProject.mod_description, mod_authors: rootProject.mod_authors, mod_license: rootProject.mod_license,
