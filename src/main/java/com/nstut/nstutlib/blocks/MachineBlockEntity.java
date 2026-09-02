@@ -19,8 +19,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fluids.capability.templates.FluidTank;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -137,7 +137,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     blockEntity.isStructureValid = false;
                     blockEntity.structureCheckCooldown = 0;
                     LOGGER.log(java.util.logging.Level.WARNING,
-                            "Machine hatch became unavailable while processing at " + pos,
+                            "Machine hatch/capability became unavailable while processing at " + pos,
                             exception);
                 }
             }
@@ -160,16 +160,17 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected abstract void processRecipe(Level level, BlockPos blockPos);
 
     /**
-     * Processes a resumable recipe transaction. Transactional item storage is compile-time constrained
-     * to {@link IItemHandlerModifiable}, and fluid storage to {@link FluidTank}, so the rollback contract
-     * cannot be accidentally bypassed by machine integrations using generic Forge capability wrappers.
+     * Processes a resumable recipe transaction. Before any mutation, transactional item handlers are
+     * required to implement IItemHandlerModifiable and transactional fluid handlers must be FluidTank
+     * instances/subclasses so rollback can restore exact state. Unsupported handlers fail preflight
+     * instead of partially mutating state.
      */
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandlerModifiable inputSlots,
-                                                                           List<FluidTank> inputTanks,
-                                                                           IItemHandlerModifiable outputSlots,
-                                                                           List<FluidTank> outputTanks,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick) {
         processRecipeTransaction(
@@ -186,13 +187,15 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandlerModifiable inputSlots,
-                                                                           List<FluidTank> inputTanks,
-                                                                           IItemHandlerModifiable outputSlots,
-                                                                           List<FluidTank> outputTanks,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
+        ModRecipe.requireRestorableStorage(inputSlots, inputTanks, "input");
+        ModRecipe.requireRestorableStorage(outputSlots, outputTanks, "output");
         restoreRecipeHandler(level, recipeType);
 
         if (recipeHandler.isEmpty()) {
