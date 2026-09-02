@@ -85,6 +85,42 @@ class ModRecipeTransactionTest {
         assertEquals(1, handler.getStackInSlot(1).getCount());
     }
 
+    @Test
+    void retryUsesTheSamePersistedChanceOutputSelection() {
+        TestRecipe recipe = recipe(
+                new IngredientItem[0],
+                new OutputItem[] {
+                        new OutputItem(new ItemStack(Items.DIAMOND, 65), 0.5f),
+                        new OutputItem(new ItemStack(Items.EMERALD, 65), 0.5f)
+                },
+                new FluidStack[0],
+                new FluidStack[0]);
+        OneShotDivergingOutputHandler handler = new OneShotDivergingOutputHandler();
+        int[] persistedSelection = {1};
+
+        assertThrows(RecipeTransactionException.class,
+                () -> recipe.assemble(handler, List.of(), persistedSelection));
+        assertTrue(handler.getStackInSlot(0).isEmpty());
+        assertTrue(handler.getStackInSlot(1).isEmpty());
+
+        recipe.assemble(handler, List.of(), persistedSelection);
+        assertEquals(64, handler.getStackInSlot(0).getCount());
+        assertTrue(handler.getStackInSlot(0).is(Items.EMERALD));
+        assertEquals(1, handler.getStackInSlot(1).getCount());
+        assertTrue(handler.getStackInSlot(1).is(Items.EMERALD));
+    }
+
+    @Test
+    void rollbackFailureIsNonRetriableCorruption() {
+        ItemStack output = new ItemStack(Items.DIAMOND, 65);
+        TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[] {new OutputItem(output, 1.0f)}, new FluidStack[0], new FluidStack[0]);
+        RollbackFailingOutputHandler handler = new RollbackFailingOutputHandler();
+
+        assertThrows(RecipeTransactionCorruptedException.class,
+                () -> recipe.assemble(handler, List.of(), new int[] {0}));
+        assertEquals(64, handler.getStackInSlot(0).getCount());
+    }
+
     private static TestRecipe recipe(IngredientItem[] inputs,
                                      OutputItem[] outputs,
                                      FluidStack[] fluidInputs,
@@ -133,6 +169,34 @@ class ModRecipeTransactionTest {
                 return stack;
             }
             return super.insertItem(slot, stack, simulate);
+        }
+    }
+
+    private static final class RollbackFailingOutputHandler extends ItemStackHandler {
+        private boolean mutationStarted;
+
+        private RollbackFailingOutputHandler() {
+            super(2);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (!simulate && slot == 1) {
+                return stack;
+            }
+            ItemStack remainder = super.insertItem(slot, stack, simulate);
+            if (!simulate && slot == 0) {
+                mutationStarted = true;
+            }
+            return remainder;
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            if (mutationStarted) {
+                throw new IllegalStateException("synthetic rollback failure");
+            }
+            super.setStackInSlot(slot, stack);
         }
     }
 
