@@ -16,26 +16,43 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.FileWriter;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+@OnlyIn(Dist.CLIENT)
 public class StructureScannerScreen extends Screen {
-    private static final String SCRIPT_OUTPUT_PATH = FMLPaths.GAMEDIR.get().resolve("nstut_script_output").toString();
+    private static final Path OUTPUT_DIR = FMLPaths.GAMEDIR.get().resolve("nstut_script_output");
+    private static final long MAX_EXPORT_BLOCKS = 32_768L;
+    private static final String SYMBOLS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_{|}~";
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
     private static final ResourceLocation TEXTURE = new ResourceLocation(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
 
     private final Level level;
+    private final int initialFirstX;
+    private final int initialFirstY;
+    private final int initialFirstZ;
+    private final int initialSecondX;
+    private final int initialSecondY;
+    private final int initialSecondZ;
 
     private EditBox firstCornerX;
     private EditBox firstCornerY;
@@ -44,344 +61,285 @@ public class StructureScannerScreen extends Screen {
     private EditBox secondCornerY;
     private EditBox secondCornerZ;
 
-    public StructureScannerScreen(Level level, ItemStack scannerItem) {
+    public StructureScannerScreen(Level level,
+                                  int firstX,
+                                  int firstY,
+                                  int firstZ,
+                                  int secondX,
+                                  int secondY,
+                                  int secondZ) {
         super(Component.literal("Structure Scanner"));
         this.level = level;
+        this.initialFirstX = firstX;
+        this.initialFirstY = firstY;
+        this.initialFirstZ = firstZ;
+        this.initialSecondX = secondX;
+        this.initialSecondY = secondY;
+        this.initialSecondZ = secondZ;
     }
 
     @Override
     protected void init() {
         super.init();
+        int centerX = width / 2;
+        int centerY = height / 2;
 
-        int centerX = this.width / 2;
-        int centerY = this.height / 2;
+        firstCornerX = coordinateBox(centerX - 70, centerY - 40, "X", initialFirstX);
+        firstCornerY = coordinateBox(centerX - 20, centerY - 40, "Y", initialFirstY);
+        firstCornerZ = coordinateBox(centerX + 30, centerY - 40, "Z", initialFirstZ);
+        secondCornerX = coordinateBox(centerX - 70, centerY + 10, "X", initialSecondX);
+        secondCornerY = coordinateBox(centerX - 20, centerY + 10, "Y", initialSecondY);
+        secondCornerZ = coordinateBox(centerX + 30, centerY + 10, "Z", initialSecondZ);
 
-        // Initialize input fields with the latest values
-        this.firstCornerX = new EditBox(this.font, centerX - 70, centerY - 40, 40, 15, Component.literal("X"));
-        this.firstCornerY = new EditBox(this.font, centerX - 20, centerY - 40, 40, 15, Component.literal("Y"));
-        this.firstCornerZ = new EditBox(this.font, centerX + 30, centerY - 40, 40, 15, Component.literal("Z"));
-        this.secondCornerX = new EditBox(this.font, centerX - 70, centerY + 10, 40, 15, Component.literal("X"));
-        this.secondCornerY = new EditBox(this.font, centerX - 20, centerY + 10, 40, 15, Component.literal("Y"));
-        this.secondCornerZ = new EditBox(this.font, centerX + 30, centerY + 10, 40, 15, Component.literal("Z"));
+        addRenderableWidget(firstCornerX);
+        addRenderableWidget(firstCornerY);
+        addRenderableWidget(firstCornerZ);
+        addRenderableWidget(secondCornerX);
+        addRenderableWidget(secondCornerY);
+        addRenderableWidget(secondCornerZ);
 
-        // Set default values
-        this.firstCornerX.setValue("0");
-        this.firstCornerY.setValue("0");
-        this.firstCornerZ.setValue("0");
-        this.secondCornerX.setValue("0");
-        this.secondCornerY.setValue("0");
-        this.secondCornerZ.setValue("0");
-
-        this.addRenderableWidget(this.firstCornerX);
-        this.addRenderableWidget(this.firstCornerY);
-        this.addRenderableWidget(this.firstCornerZ);
-        this.addRenderableWidget(this.secondCornerX);
-        this.addRenderableWidget(this.secondCornerY);
-        this.addRenderableWidget(this.secondCornerZ);
-
-        // Save Button
-        Button saveButton = Button.builder(Component.literal("Save"), this::onSave)
+        addRenderableWidget(Button.builder(Component.literal("Save"), this::onSave)
                 .pos(centerX - 60, centerY + 50)
                 .size(50, 20)
-                .build();
-        this.addRenderableWidget(saveButton);
-
-        // Export Button
-        Button exportButton = Button.builder(Component.literal("Export"), this::onExport)
+                .build());
+        addRenderableWidget(Button.builder(Component.literal("Export"), this::onExport)
                 .pos(centerX + 10, centerY + 50)
                 .size(50, 20)
-                .build();
-        this.addRenderableWidget(exportButton);
-
-        // Labels
-        StringWidget firstCornerLabel = new StringWidget(centerX - 89, centerY - 60, 100, 20, Component.literal("First Corner"), this.font);
-        StringWidget secondCornerLabel = new StringWidget(centerX - 84, centerY - 10, 100, 20, Component.literal("Second Corner"), this.font);
-        this.addRenderableWidget(firstCornerLabel);
-        this.addRenderableWidget(secondCornerLabel);
+                .build());
+        addRenderableWidget(new StringWidget(centerX - 89, centerY - 60, 100, 20, Component.literal("First Corner"), font));
+        addRenderableWidget(new StringWidget(centerX - 84, centerY - 10, 100, 20, Component.literal("Second Corner"), font));
     }
 
-    private void onSave(Button button) {
+    private EditBox coordinateBox(int x, int y, String label, int value) {
+        EditBox box = new EditBox(font, x, y, 40, 15, Component.literal(label));
+        box.setValue(Integer.toString(value));
+        box.setMaxLength(11);
+        return box;
+    }
+
+    private void onSave(Button ignored) {
+        int[] corners = readCorners();
+        if (corners == null) {
+            return;
+        }
+        PacketRegistries.sendToServer(new StructureScannerC2SPacket(
+                corners[0], corners[1], corners[2], corners[3], corners[4], corners[5]));
+    }
+
+    private void onExport(Button ignored) {
+        int[] corners = readCorners();
+        if (corners == null) {
+            return;
+        }
+
+        int minX = Math.min(corners[0], corners[3]);
+        int minY = Math.min(corners[1], corners[4]);
+        int minZ = Math.min(corners[2], corners[5]);
+        int maxX = Math.max(corners[0], corners[3]);
+        int maxY = Math.max(corners[1], corners[4]);
+        int maxZ = Math.max(corners[2], corners[5]);
+
+        long width = (long) maxX - minX + 1L;
+        long height = (long) maxY - minY + 1L;
+        long depth = (long) maxZ - minZ + 1L;
+        long volume;
         try {
-            int firstX = Integer.parseInt(this.firstCornerX.getValue());
-            int firstY = Integer.parseInt(this.firstCornerY.getValue());
-            int firstZ = Integer.parseInt(this.firstCornerZ.getValue());
-            int secondX = Integer.parseInt(this.secondCornerX.getValue());
-            int secondY = Integer.parseInt(this.secondCornerY.getValue());
-            int secondZ = Integer.parseInt(this.secondCornerZ.getValue());
-
-            // Send packet to the server with the updated corner values
-            PacketRegistries.sendToServer(new StructureScannerC2SPacket(firstX, firstY, firstZ, secondX, secondY, secondZ));
-        } catch (NumberFormatException e) {
-            LOGGER.warning("Invalid input: " + e.getMessage());
+            volume = Math.multiplyExact(Math.multiplyExact(width, height), depth);
+        } catch (ArithmeticException exception) {
+            notifyUser("Selection is too large");
+            return;
         }
-    }
+        if (volume <= 0 || volume > MAX_EXPORT_BLOCKS) {
+            notifyUser("Selection must contain at most " + MAX_EXPORT_BLOCKS + " blocks");
+            return;
+        }
 
-    private void onExport(Button button) {
-        int x1 = Integer.parseInt(this.firstCornerX.getValue());
-        int y1 = Integer.parseInt(this.firstCornerY.getValue());
-        int z1 = Integer.parseInt(this.firstCornerZ.getValue());
-        int x2 = Integer.parseInt(this.secondCornerX.getValue());
-        int y2 = Integer.parseInt(this.secondCornerY.getValue());
-        int z2 = Integer.parseInt(this.secondCornerZ.getValue());
+        for (int chunkX = minX >> 4; chunkX <= maxX >> 4; chunkX++) {
+            for (int chunkZ = minZ >> 4; chunkZ <= maxZ >> 4; chunkZ++) {
+                if (!level.hasChunk(chunkX, chunkZ)) {
+                    notifyUser("Load the entire selection before exporting");
+                    return;
+                }
+            }
+        }
 
-        int minX = Math.min(x1, x2);
-        int minY = Math.min(y1, y2);
-        int minZ = Math.min(z1, z2);
-        int maxX = Math.max(x1, x2);
-        int maxY = Math.max(y1, y2);
-        int maxZ = Math.max(z1, z2);
-
-        // Initialize pattern and mapping
-        List<List<String>> pattern = new ArrayList<>();
-        Map<String, MultiblockBlock> mapping = new HashMap<>();
-        char currentChar = 'a';
-
-        // Iterate over the area to capture block data
-        for (int y = maxY; y >= minY; y--) {
-            List<String> layer = new ArrayList<>();
+        MultiblockBlock[][][] blockArray = new MultiblockBlock[(int) height][(int) depth][(int) width];
+        for (int y = minY; y <= maxY; y++) {
             for (int z = minZ; z <= maxZ; z++) {
-                StringBuilder row = new StringBuilder();
                 for (int x = maxX; x >= minX; x--) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    BlockState state = level.getBlockState(pos);
-                    String blockName = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(state.getBlock())).toString();
-
-                    // Capture block states
+                    BlockState state = level.getBlockState(new BlockPos(x, y, z));
+                    if (state.isAir()) {
+                        continue;
+                    }
                     Map<String, String> stateMap = state.getProperties().stream()
-                            .collect(Collectors.toMap
-                                    (
-                                            Property::getName,
-                                            property -> state.getValue(property).toString()
-                                    )
-                            );
-
-                    if (blockName.equals("minecraft:air")) {
-                        row.append(" ");
-                    } else {
-                        MultiblockBlock multiblockBlock = new MultiblockBlock(state.getBlock(), stateMap);
-                        String symbol = mapping.entrySet().stream()
-                                .filter(entry -> entry.getValue().equals(multiblockBlock))
-                                .map(Map.Entry::getKey)
-                                .findFirst()
-                                .orElse(null);
-
-                        if (symbol == null) {
-                            symbol = String.valueOf(currentChar);
-                            mapping.put(symbol, multiblockBlock);
-                            currentChar++;
-                        }
-
-                        row.append(symbol);
-                    }
+                            .collect(Collectors.toMap(Property::getName, property -> propertyValue(state, property)));
+                    blockArray[y - minY][z - minZ][maxX - x] = new MultiblockBlock(state.getBlock(), stateMap);
                 }
-                layer.add(row.toString()); // Add the reversed row to the layer
             }
-            pattern.add(0, layer); // Add the layer in reverse order to fix Y-axis flipping
         }
 
-        // Create a MultiblockPattern object from the collected pattern
-        MultiblockBlock[][][] blockArray = new MultiblockBlock[pattern.size()][][];
-        for (int y = 0; y < pattern.size(); y++) {
-            List<String> layer = pattern.get(y);
-            MultiblockBlock[][] layerArray = new MultiblockBlock[layer.size()][];
-            for (int z = 0; z < layer.size(); z++) {
-                String row = layer.get(z);
-                MultiblockBlock[] rowArray = new MultiblockBlock[row.length()];
-                for (int x = row.length() - 1; x >= 0; x--) {
-                    String symbol = String.valueOf(row.charAt(x));
-                    if (" ".equals(symbol)) {
-                        rowArray[x] = null;
-                    } else {
-                        rowArray[x] = mapping.get(symbol);
-                    }
-                }
-                layerArray[z] = rowArray;
-            }
-            blockArray[y] = layerArray;
+        try {
+            Files.createDirectories(OUTPUT_DIR);
+            MultiblockPattern pattern = new MultiblockPattern(blockArray);
+            writePatchouliJson(pattern, OUTPUT_DIR.resolve("structure_patchouli.json"));
+            writeJavaPattern(pattern, OUTPUT_DIR.resolve("structure_pattern.txt"));
+            notifyUser("Structure exported to " + OUTPUT_DIR);
+        } catch (IOException | IllegalStateException exception) {
+            LOGGER.warning("Structure export failed: " + exception.getMessage());
+            notifyUser("Export failed: " + exception.getMessage());
         }
-
-        // Create a MultiblockPattern object
-        MultiblockPattern multiblockPattern = new MultiblockPattern(blockArray);
-
-        // Write to files using the new MultiblockPattern object
-        writeJson(multiblockPattern);
-        writeTxt(multiblockPattern);
     }
 
-    @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(graphics);
-        RenderSystem.setShaderTexture(0, TEXTURE);
-        int screenHeight = 166;
-        int screenWidth = 176;
-        graphics.blit(TEXTURE, (this.width - screenWidth) / 2, (this.height - screenHeight) / 2, 0, 0, screenWidth, screenHeight);
-        super.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerX.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerY.render(graphics, mouseX, mouseY, partialTicks);
-        this.firstCornerZ.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerX.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerY.render(graphics, mouseX, mouseY, partialTicks);
-        this.secondCornerZ.render(graphics, mouseX, mouseY, partialTicks);
+    private int[] readCorners() {
+        try {
+            return new int[] {
+                    Integer.parseInt(firstCornerX.getValue()),
+                    Integer.parseInt(firstCornerY.getValue()),
+                    Integer.parseInt(firstCornerZ.getValue()),
+                    Integer.parseInt(secondCornerX.getValue()),
+                    Integer.parseInt(secondCornerY.getValue()),
+                    Integer.parseInt(secondCornerZ.getValue())
+            };
+        } catch (NumberFormatException exception) {
+            notifyUser("Coordinates must be valid 32-bit integers");
+            return null;
+        }
     }
 
-    public void setCorners(int firstX, int firstY, int firstZ, int secondX, int secondY, int secondZ) {
-        this.firstCornerX.setValue(String.valueOf(firstX));
-        this.firstCornerY.setValue(String.valueOf(firstY));
-        this.firstCornerZ.setValue(String.valueOf(firstZ));
-        this.secondCornerX.setValue(String.valueOf(secondX));
-        this.secondCornerY.setValue(String.valueOf(secondY));
-        this.secondCornerZ.setValue(String.valueOf(secondZ));
+    private static <T extends Comparable<T>> String propertyValue(BlockState state, Property<T> property) {
+        return property.getName(state.getValue(property));
     }
 
-    private void writeJson(MultiblockPattern multiblockPattern) {
-        // Extract pattern and mapping from the MultiblockPattern instance
+    private void writePatchouliJson(MultiblockPattern multiblockPattern, Path path) throws IOException {
         MultiblockBlock[][][] pattern = multiblockPattern.getPattern();
-
-        // Convert the pattern to a list of string layers for JSON format
+        Map<MultiblockBlock, Character> symbols = createSymbolMap(pattern);
         List<List<String>> jsonPattern = new ArrayList<>();
-        Map<String, MultiblockBlock> mapping = new LinkedHashMap<>();
-        char currentChar = 'b';
 
         for (int y = pattern.length - 1; y >= 0; y--) {
             List<String> layer = new ArrayList<>();
-            for (int x = pattern[0][0].length - 1; x >= 0; x--) {
-                StringBuilder row = new StringBuilder();
-                for (int z = 0; z < pattern[0].length; z++) {
-                    MultiblockBlock block = pattern[y][z][x];
-                    if (block == null) {
-                        row.append(" ");
-                    } else {
-                        String symbol = mapping.entrySet().stream()
-                                .filter(entry -> entry.getValue().equals(block))
-                                .map(Map.Entry::getKey)
-                                .findFirst()
-                                .orElse(null);
-
-                        if (symbol == null) {
-                            symbol = String.valueOf(currentChar++);
-                            mapping.put(symbol, block);
-                        }
-
-                        row.append(symbol);
-                    }
+            for (MultiblockBlock[] row : pattern[y]) {
+                StringBuilder line = new StringBuilder();
+                for (MultiblockBlock block : row) {
+                    line.append(block == null ? ' ' : symbols.get(block));
                 }
-                layer.add(row.toString());
+                layer.add(line.toString());
             }
             jsonPattern.add(layer);
         }
 
-        // Create the JSON structure
-        Map<String, Object> jsonData = new HashMap<>();
-        jsonData.put("type", "patchouli:multiblock");
-
-        Map<String, Object> multiblockData = new HashMap<>();
-        multiblockData.put("pattern", jsonPattern);
-
-        // Modify the mapping output to match the required format
         Map<String, String> formattedMapping = new LinkedHashMap<>();
-        for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
-            String blockStateString = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(entry.getValue().getBlock())).toString();
-
-            // Add block state properties
-            String blockStateProperties = entry.getValue().getStates().entrySet().stream()
-                    .map(e -> e.getKey() + "=" + e.getValue())
-                    .collect(Collectors.joining(", "));
-
-            if (!blockStateProperties.isEmpty()) {
-                blockStateString += "[" + blockStateProperties + "]";
+        for (Map.Entry<MultiblockBlock, Character> entry : symbols.entrySet()) {
+            MultiblockBlock block = entry.getKey();
+            ResourceLocation id = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(block.getBlock()));
+            String blockState = id.toString();
+            if (!block.getStates().isEmpty()) {
+                blockState += "[" + block.getStates().entrySet().stream()
+                        .map(state -> state.getKey() + "=" + state.getValue())
+                        .collect(Collectors.joining(",")) + "]";
             }
-
-            formattedMapping.put(entry.getKey(), blockStateString);
+            formattedMapping.put(String.valueOf(entry.getValue()), blockState);
         }
 
-        multiblockData.put("mapping", formattedMapping);
-        multiblockData.put("symmetrical", true);
-        jsonData.put("multiblock", multiblockData);
+        Map<String, Object> multiblock = new LinkedHashMap<>();
+        multiblock.put("pattern", jsonPattern);
+        multiblock.put("mapping", formattedMapping);
+        multiblock.put("symmetrical", true);
 
-        // Serialize to JSON and save to file
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("type", "patchouli:multiblock");
+        root.put("multiblock", multiblock);
+
         Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH + "\\structure_patchouli.json")) {
-            gson.toJson(jsonData, writer);
-        } catch (IOException e) {
-            LOGGER.severe("Failed to write JSON file: " + e.getMessage());
+        try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+            gson.toJson(root, writer);
         }
     }
 
-    private void writeTxt(MultiblockPattern multiblockPattern) {
+    private void writeJavaPattern(MultiblockPattern multiblockPattern, Path path) throws IOException {
         MultiblockBlock[][][] pattern = multiblockPattern.getPattern();
-        Map<String, String> filteredMapping = new LinkedHashMap<>();
-        Map<String, MultiblockBlock> mapping = new LinkedHashMap<>();
-        char currentChar = 'b';
-
-        // Populate the mapping only with unique blocks
+        Map<MultiblockBlock, String> variables = new LinkedHashMap<>();
+        int index = 0;
         for (MultiblockBlock[][] layer : pattern) {
             for (MultiblockBlock[] row : layer) {
                 for (MultiblockBlock block : row) {
-                    if (block != null && !mapping.containsValue(block)) {
-                        mapping.put(String.valueOf(currentChar++), block);
+                    if (block != null && !variables.containsKey(block)) {
+                        variables.put(block, "b" + index++);
                     }
                 }
             }
         }
 
-        // Filter and map unique blocks to variable names
-        for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
-            MultiblockBlock block = entry.getValue();
-            String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock()).toString();
-            filteredMapping.putIfAbsent(entry.getKey(), blockName); // Avoids duplicates
-        }
-
-        // Write the multiblock pattern
-        try (FileWriter writer = new FileWriter(SCRIPT_OUTPUT_PATH + "\\structure_pattern.txt")) {
-            writer.write("@Override\n");
-            writer.write("public MultiblockPattern getMultiblockPattern() {\n");
-
-            // Write block declarations
-            writer.write("    MultiblockBlock ");
-            List<String> declarations = new ArrayList<>();
-            for (Map.Entry<String, MultiblockBlock> entry : mapping.entrySet()) {
-                MultiblockBlock block = entry.getValue();
-                String blockName = ForgeRegistries.BLOCKS.getKey(block.getBlock())
-                        .toString()
-                        .replace("minecraft:", "")
-                        .toUpperCase()
-                        .replace(":", "_");
-                String attributes = block.getStates().entrySet().stream()
-                        .map(e -> "\"" + e.getKey() + "\", \"" + e.getValue() + "\"")
-                        .collect(Collectors.joining(", "));
-                declarations.add(String.format("%s = new MultiblockBlock(Blocks.%s, Map.of(%s))",
-                        entry.getKey(), blockName, attributes));
+        try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+            writer.write("@Override\npublic MultiblockPattern getMultiblockPattern() {\n");
+            for (Map.Entry<MultiblockBlock, String> entry : variables.entrySet()) {
+                MultiblockBlock block = entry.getKey();
+                ResourceLocation id = Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(block.getBlock()));
+                writer.write("    MultiblockBlock " + entry.getValue() + " = new MultiblockBlock(");
+                writer.write("java.util.Objects.requireNonNull(net.minecraftforge.registries.ForgeRegistries.BLOCKS.getValue(");
+                writer.write("new net.minecraft.resources.ResourceLocation(\"" + id.getNamespace() + "\", \"" + id.getPath() + "\"))), ");
+                writer.write(formatStateMap(block.getStates()));
+                writer.write(");\n");
             }
-            writer.write(String.join(",\n    ", declarations) + ";\n\n");
 
-            // Write the pattern array
-            writer.write("    MultiblockBlock[][][] blockArray = new MultiblockBlock[][][] {\n");
-            for (int y = pattern.length - 1; y >= 0; y--) {
+            writer.write("\n    MultiblockBlock[][][] blockArray = new MultiblockBlock[][][] {\n");
+            for (int y = 0; y < pattern.length; y++) {
                 writer.write("        {\n");
                 for (MultiblockBlock[] row : pattern[y]) {
-                    // Reverse the row
-                    List<MultiblockBlock> reversedRow = Arrays.asList(row.clone());
-                    Collections.reverse(reversedRow);
-
-                    String formattedRow = reversedRow.stream()
-                            .map(block -> block == null ? "null" : mapping.entrySet().stream()
-                                    .filter(entry -> entry.getValue().equals(block))
-                                    .map(Map.Entry::getKey)
-                                    .findFirst()
-                                    .orElse("null"))
-                            .collect(Collectors.joining(", "));
-                    writer.write("            {" + formattedRow + "},\n");
+                    StringJoiner joiner = new StringJoiner(", ", "            {", "},\n");
+                    for (MultiblockBlock block : row) {
+                        joiner.add(block == null ? "null" : variables.get(block));
+                    }
+                    writer.write(joiner.toString());
                 }
                 writer.write("        },\n");
             }
-            writer.write("    };\n\n");
-
-            // Return the multiblock pattern
-            writer.write("    return new MultiblockPattern(blockArray, false);\n");
-            writer.write("}\n");
-        } catch (IOException e) {
-            LOGGER.severe("Failed to write TXT file: " + e.getMessage());
+            writer.write("    };\n\n    return new MultiblockPattern(blockArray);\n}\n");
         }
     }
-}
 
+    private static String formatStateMap(Map<String, String> states) {
+        if (states == null || states.isEmpty()) {
+            return "java.util.Map.of()";
+        }
+        StringJoiner joiner = new StringJoiner(", ", "java.util.Map.of(", ")");
+        states.forEach((key, value) -> {
+            joiner.add("\"" + key + "\"");
+            joiner.add("\"" + value + "\"");
+        });
+        return joiner.toString();
+    }
+
+    private static Map<MultiblockBlock, Character> createSymbolMap(MultiblockBlock[][][] pattern) {
+        Map<MultiblockBlock, Character> symbols = new LinkedHashMap<>();
+        for (MultiblockBlock[][] layer : pattern) {
+            for (MultiblockBlock[] row : layer) {
+                for (MultiblockBlock block : row) {
+                    if (block != null && !symbols.containsKey(block)) {
+                        int index = symbols.size();
+                        if (index >= SYMBOLS.length()) {
+                            throw new IllegalStateException("Too many unique block states to export");
+                        }
+                        symbols.put(block, SYMBOLS.charAt(index));
+                    }
+                }
+            }
+        }
+        return symbols;
+    }
+
+    private void notifyUser(String message) {
+        if (minecraft != null && minecraft.player != null) {
+            minecraft.player.displayClientMessage(Component.literal(message), false);
+        }
+    }
+
+    @Override
+    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        renderBackground(graphics);
+        RenderSystem.setShaderTexture(0, TEXTURE);
+        int screenHeight = 166;
+        int screenWidth = 176;
+        graphics.blit(TEXTURE, (width - screenWidth) / 2, (height - screenHeight) / 2, 0, 0, screenWidth, screenHeight);
+        super.render(graphics, mouseX, mouseY, partialTicks);
+    }
+}

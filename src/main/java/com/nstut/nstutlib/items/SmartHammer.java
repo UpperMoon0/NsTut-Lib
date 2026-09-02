@@ -1,18 +1,18 @@
 package com.nstut.nstutlib.items;
 
-import com.mojang.logging.LogUtils;
 import com.nstut.nstutlib.blocks.MachineBlock;
 import com.nstut.nstutlib.blocks.MachineBlockEntity;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -24,165 +24,218 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SmartHammer extends Item {
+    private static final int MAX_BUILD_BLOCKS = 32_768;
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
-    public SmartHammer(Properties pProperties) {
-        super(pProperties);
+    public SmartHammer(Properties properties) {
+        super(properties);
     }
 
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
-        if (!level.isClientSide && Minecraft.getInstance().hitResult != null && Minecraft.getInstance().hitResult.getType() == HitResult.Type.BLOCK) {
-            BlockHitResult blockHitResult = (BlockHitResult) Minecraft.getInstance().hitResult;
-            BlockPos blockPos = blockHitResult.getBlockPos();
-            BlockState blockState = level.getBlockState(blockPos);
-            Block block = blockState.getBlock();
-
-            if (block instanceof MachineBlock && player.isShiftKeyDown()) {
-                BlockEntity blockEntity = level.getBlockEntity(blockPos);
-                if (blockEntity instanceof MachineBlockEntity machineBlockEntity) {
-                    MultiblockPattern pattern = machineBlockEntity.getMultiblockPattern();
-                    buildStructure(level,
-                                blockPos,
-                                pattern,
-                                machineBlockEntity.getSouthOffsetX(),
-                                machineBlockEntity.getSouthOffsetY(),
-                                machineBlockEntity.getSouthOffsetZ());
-                    return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide());
-                }
-            }
+        ItemStack hammer = player.getItemInHand(hand);
+        if (level.isClientSide || !player.isShiftKeyDown()) {
+            return InteractionResultHolder.pass(hammer);
         }
 
-        return InteractionResultHolder.pass(player.getItemInHand(hand));
+        HitResult hitResult = player.pick(5.0D, 0.0F, false);
+        if (hitResult.getType() != HitResult.Type.BLOCK) {
+            return InteractionResultHolder.pass(hammer);
+        }
+
+        BlockPos controllerPos = ((BlockHitResult) hitResult).getBlockPos();
+        BlockState controllerState = level.getBlockState(controllerPos);
+        if (!(controllerState.getBlock() instanceof MachineBlock)) {
+            return InteractionResultHolder.pass(hammer);
+        }
+
+        BlockEntity blockEntity = level.getBlockEntity(controllerPos);
+        if (!(blockEntity instanceof MachineBlockEntity machineBlockEntity)) {
+            return InteractionResultHolder.pass(hammer);
+        }
+
+        boolean built = buildStructure(
+                level,
+                player,
+                controllerPos,
+                machineBlockEntity.getMultiblockPattern(),
+                machineBlockEntity.getSouthOffsetX(),
+                machineBlockEntity.getSouthOffsetY(),
+                machineBlockEntity.getSouthOffsetZ());
+        if (built) {
+            machineBlockEntity.requestStructureValidation();
+            return InteractionResultHolder.consume(hammer);
+        }
+        return InteractionResultHolder.fail(hammer);
     }
 
-    private void buildStructure(Level level,
-                                BlockPos controllerPos,
-                                MultiblockPattern pattern,
-                                int conSouthOffsetX,
-                                int conSouthOffsetY,
-                                int conSouthOffsetZ) {
-
-        // Map for alternative items
-        Map<Block, Block> alternativeItems = new HashMap<>();
-        alternativeItems.put(Blocks.FARMLAND, Blocks.DIRT);
-
-        MultiblockBlock[][][] blockArray = pattern.getPattern();
-
+    private boolean buildStructure(Level level,
+                                   Player player,
+                                   BlockPos controllerPos,
+                                   MultiblockPattern pattern,
+                                   int southOffsetX,
+                                   int southOffsetY,
+                                   int southOffsetZ) {
+        MultiblockBlock[][][] blocks = pattern.getPattern();
         BlockState controllerState = level.getBlockState(controllerPos);
         Direction controllerFacing = controllerState.getValue(HorizontalDirectionalBlock.FACING);
+        List<Placement> placements = new ArrayList<>();
 
-        Player player = level.getNearestPlayer(controllerPos.getX(), controllerPos.getY(), controllerPos.getZ(), 10, false);
-        if (player == null) return;
-
-        for (int y = blockArray.length - 1; y >= 0; y--) {
-            for (int z = 0; z < blockArray[y].length; z++) {
-                for (int x = 0; x < blockArray[y][z].length; x++) {
-                    MultiblockBlock block = blockArray[y][z][x];
-                    if (block != null) {
-                        BlockPos targetPos = MultiblockPattern.rotateBlockPos(
-                                controllerPos,
-                                conSouthOffsetX,
-                                conSouthOffsetY,
-                                conSouthOffsetZ,
-                                blockArray.length,
-                                blockArray[y].length,
-                                x,
-                                y,
-                                z,
-                                controllerState);
-
-                        // If the block at the target position is the same as the block in the pattern, skip it
-                        if (level.getBlockState(targetPos).is(block.getBlock())) {
-                            continue;
-                        }
-
-                        BlockState newState = block.getBlock().defaultBlockState();
-                        Map<String, String> previousState = block.getStates();
-
-                        if (previousState != null && previousState.containsKey("facing")) {
-                            String previousFacing = previousState.get("facing");
-                            Direction previousDirection = Direction.byName(previousFacing);
-                            if (previousDirection != null) {
-                                Direction rotatedFacing = MultiblockPattern.rotateHorizontalDirection(controllerFacing, previousDirection);
-                                Map<String, String> mutableState = new HashMap<>(previousState);
-                                mutableState.put("facing", rotatedFacing.getName());
-                                previousState = mutableState;
-                            }
-                        }
-
-                        BlockState modifiedState = applyBlockStates(newState, previousState);
-
-                        // Check if it's the controller block's position and if the player is in survival mode
-                        if (block.getBlock() == Blocks.WATER || targetPos.equals(controllerPos) || player.isCreative()) {
-                            // In survival mode, place the block without checking inventory at the controller block
-                            level.setBlock(targetPos, modifiedState, 3);
-                        } else {
-                            // Check if the block has an alternative item
-                            Block blockToPlace = block.getBlock();
-                            if (alternativeItems.containsKey(blockToPlace)) {
-                                blockToPlace = alternativeItems.get(blockToPlace);
-                            }
-
-                            ItemStack requiredStack = new ItemStack(blockToPlace, 1);
-                            boolean itemFound = false;
-
-                            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-                                ItemStack stackInSlot = player.getInventory().getItem(i);
-                                if (stackInSlot.is(requiredStack.getItem()) && stackInSlot.getCount() >= requiredStack.getCount()) {
-                                    // Set the block in the world
-                                    level.setBlock(targetPos, modifiedState, 3);
-
-                                    // Reduce the stack by 1 (placing 1 block)
-                                    stackInSlot.shrink(1);
-
-                                    itemFound = true;
-                                    break;
-                                }
-                            }
-
-                            if (!itemFound) {
-                                if (!level.isClientSide) {
-                                    String errorMessage = "Item not found in inventory: " + requiredStack.getItem().getName(requiredStack).getString();
-                                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(errorMessage), true);
-                                }
-                                return;
-                            }
-                        }
+        for (int y = blocks.length - 1; y >= 0; y--) {
+            for (int z = 0; z < blocks[y].length; z++) {
+                for (int x = 0; x < blocks[y][z].length; x++) {
+                    MultiblockBlock expected = blocks[y][z][x];
+                    if (expected == null) {
+                        continue;
                     }
+                    if (placements.size() >= MAX_BUILD_BLOCKS) {
+                        notify(player, "Structure is too large for the Smart Hammer");
+                        return false;
+                    }
+
+                    BlockPos target = MultiblockPattern.rotateBlockPos(
+                            controllerPos,
+                            southOffsetX,
+                            southOffsetY,
+                            southOffsetZ,
+                            blocks.length,
+                            blocks[y].length,
+                            x,
+                            y,
+                            z,
+                            controllerState);
+                    if (target.equals(controllerPos)) {
+                        continue;
+                    }
+
+                    Map<String, String> states = rotateFacing(expected.getStates(), controllerFacing);
+                    BlockState desired = applyBlockStates(expected.getBlock().defaultBlockState(), states);
+                    BlockState current = level.getBlockState(target);
+                    if (current.equals(desired)) {
+                        continue;
+                    }
+                    if (!current.canBeReplaced()) {
+                        notify(player, "Cannot replace " + current.getBlock().getName().getString() + " at " + target.toShortString());
+                        return false;
+                    }
+
+                    Item requiredItem = requiredItem(expected.getBlock());
+                    if (!player.isCreative() && requiredItem == Items.AIR) {
+                        notify(player, "No placeable inventory item exists for " + expected.getBlock().getName().getString());
+                        return false;
+                    }
+                    placements.add(new Placement(target, desired, requiredItem, expected.getBlock() == Blocks.WATER));
                 }
             }
         }
-    }
 
-    private BlockState applyBlockStates(BlockState currentState, Map<String, String> states) {
-        if (states == null || states.isEmpty()) return currentState;
+        if (!player.isCreative() && !hasRequiredItems(player, placements)) {
+            return false;
+        }
 
-        BlockState modifiedState = currentState;
-        StateDefinition<Block, BlockState> stateDefinition = currentState.getBlock().getStateDefinition();
-
-        for (Map.Entry<String, String> entry : states.entrySet()) {
-            Property<?> property = stateDefinition.getProperty(entry.getKey());
-            if (property != null) {
-                modifiedState = applyState(modifiedState, property, entry.getValue());
+        for (Placement placement : placements) {
+            if (!player.isCreative()) {
+                if (!consumeOne(player, placement.requiredItem)) {
+                    notify(player, "Inventory changed while building; stopped safely");
+                    return false;
+                }
+            }
+            level.setBlock(placement.pos, placement.state, 3);
+            if (!player.isCreative() && placement.water) {
+                ItemStack bucket = new ItemStack(Items.BUCKET);
+                if (!player.getInventory().add(bucket)) {
+                    player.drop(bucket, false);
+                }
             }
         }
-
-        return modifiedState;
+        return true;
     }
 
-    private <T extends Comparable<T>> BlockState applyState(BlockState state, Property<T> property, String value) {
-        T parsedValue = property.getValue(value).orElse(null);
-        if (parsedValue != null) {
-            return state.setValue(property, parsedValue);
+    private static Item requiredItem(Block block) {
+        if (block == Blocks.FARMLAND) {
+            return Items.DIRT;
         }
-        return state;
+        if (block == Blocks.WATER) {
+            return Items.WATER_BUCKET;
+        }
+        return block.asItem();
+    }
+
+    private static boolean hasRequiredItems(Player player, List<Placement> placements) {
+        Map<Item, Integer> required = new HashMap<>();
+        for (Placement placement : placements) {
+            required.merge(placement.requiredItem, 1, Integer::sum);
+        }
+        for (Map.Entry<Item, Integer> entry : required.entrySet()) {
+            int available = 0;
+            for (ItemStack stack : player.getInventory().items) {
+                if (stack.is(entry.getKey())) {
+                    available += stack.getCount();
+                }
+            }
+            if (available < entry.getValue()) {
+                notify(player, "Missing " + (entry.getValue() - available) + " × " + entry.getKey().getDescription().getString());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean consumeOne(Player player, Item item) {
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.is(item) && !stack.isEmpty()) {
+                stack.shrink(1);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Map<String, String> rotateFacing(Map<String, String> states, Direction controllerFacing) {
+        if (states == null || !states.containsKey("facing")) {
+            return states;
+        }
+        Direction authored = Direction.byName(states.get("facing"));
+        if (authored == null || !authored.getAxis().isHorizontal()) {
+            return states;
+        }
+        Map<String, String> rotated = new HashMap<>(states);
+        rotated.put("facing", MultiblockPattern.rotateHorizontalDirection(controllerFacing, authored).getName());
+        return rotated;
+    }
+
+    private static BlockState applyBlockStates(BlockState state, Map<String, String> states) {
+        if (states == null) {
+            return state;
+        }
+        BlockState result = state;
+        StateDefinition<Block, BlockState> definition = state.getBlock().getStateDefinition();
+        for (Map.Entry<String, String> entry : states.entrySet()) {
+            if ("operating".equals(entry.getKey())) {
+                continue;
+            }
+            Property<?> property = definition.getProperty(entry.getKey());
+            if (property != null) {
+                result = applyState(result, property, entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    private static <T extends Comparable<T>> BlockState applyState(BlockState state, Property<T> property, String value) {
+        return property.getValue(value).map(parsed -> state.setValue(property, parsed)).orElse(state);
+    }
+
+    private static void notify(Player player, String message) {
+        player.displayClientMessage(Component.literal(message), true);
+    }
+
+    private record Placement(BlockPos pos, BlockState state, Item requiredItem, boolean water) {
     }
 }

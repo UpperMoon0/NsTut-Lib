@@ -2,8 +2,6 @@ package com.nstut.nstutlib.items;
 
 import com.nstut.nstutlib.network.PacketRegistries;
 import com.nstut.nstutlib.network.StructureScannerS2CPacket;
-import com.nstut.nstutlib.views.StructureScannerScreen;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -23,52 +21,39 @@ public class StructureScanner extends Item {
 
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
-        ItemStack scannerItem = player.getItemInHand(hand);
-
-        if (!level.isClientSide) { // Server-side logic
-            HitResult hitResult = player.pick(4, 0, false); // Simulates Minecraft's default interaction ray-tracing.
-
-            if (hitResult.getType() == HitResult.Type.BLOCK) {
-                BlockHitResult blockHitResult = (BlockHitResult) hitResult;
-                int blockX = blockHitResult.getBlockPos().getX();
-                int blockY = blockHitResult.getBlockPos().getY();
-                int blockZ = blockHitResult.getBlockPos().getZ();
-
-                if (player.isShiftKeyDown()) {
-                    // Set second corner
-                    scannerItem.getOrCreateTag().putInt("SecondCornerX", blockX);
-                    scannerItem.getOrCreateTag().putInt("SecondCornerY", blockY);
-                    scannerItem.getOrCreateTag().putInt("SecondCornerZ", blockZ);
-                    player.displayClientMessage(Component.literal("Second corner set to: " + blockX + ", " + blockY + ", " + blockZ), true);
-                } else {
-                    // Set first corner
-                    scannerItem.getOrCreateTag().putInt("FirstCornerX", blockX);
-                    scannerItem.getOrCreateTag().putInt("FirstCornerY", blockY);
-                    scannerItem.getOrCreateTag().putInt("FirstCornerZ", blockZ);
-                    player.displayClientMessage(Component.literal("First corner set to: " + blockX + ", " + blockY + ", " + blockZ), true);
-                }
-
-                return InteractionResultHolder.sidedSuccess(scannerItem, level.isClientSide());
-            }
-
-            // Send the packet to the client to open the GUI
-            int firstCornerX = scannerItem.getOrCreateTag().getInt("FirstCornerX");
-            int firstCornerY = scannerItem.getOrCreateTag().getInt("FirstCornerY");
-            int firstCornerZ = scannerItem.getOrCreateTag().getInt("FirstCornerZ");
-            int secondCornerX = scannerItem.getOrCreateTag().getInt("SecondCornerX");
-            int secondCornerY = scannerItem.getOrCreateTag().getInt("SecondCornerY");
-            int secondCornerZ = scannerItem.getOrCreateTag().getInt("SecondCornerZ");
-
-            if (player instanceof ServerPlayer) {
-                PacketRegistries.sendToClients(new StructureScannerS2CPacket(firstCornerX, firstCornerY, firstCornerZ, secondCornerX, secondCornerY, secondCornerZ));
-            }
-        } else { // Client-side logic
-            if (Minecraft.getInstance().hitResult != null && Minecraft.getInstance().hitResult.getType() == HitResult.Type.MISS) {
-                Minecraft.getInstance().setScreen(new StructureScannerScreen(level, scannerItem));
-                return InteractionResultHolder.sidedSuccess(scannerItem, level.isClientSide());
-            }
+        ItemStack scanner = player.getItemInHand(hand);
+        if (level.isClientSide) {
+            return InteractionResultHolder.sidedSuccess(scanner, true);
         }
 
-        return InteractionResultHolder.pass(scannerItem);
+        HitResult hitResult = player.pick(5.0D, 0.0F, false);
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            BlockHitResult blockHit = (BlockHitResult) hitResult;
+            if (player.isShiftKeyDown()) {
+                setCorner(scanner, "SecondCorner", blockHit);
+                player.displayClientMessage(Component.literal("Second corner set to " + blockHit.getBlockPos().toShortString()), true);
+            } else {
+                setCorner(scanner, "FirstCorner", blockHit);
+                player.displayClientMessage(Component.literal("First corner set to " + blockHit.getBlockPos().toShortString()), true);
+            }
+            return InteractionResultHolder.consume(scanner);
+        }
+
+        if (player instanceof ServerPlayer serverPlayer) {
+            PacketRegistries.sendToPlayer(serverPlayer, new StructureScannerS2CPacket(
+                    scanner.getOrCreateTag().getInt("FirstCornerX"),
+                    scanner.getOrCreateTag().getInt("FirstCornerY"),
+                    scanner.getOrCreateTag().getInt("FirstCornerZ"),
+                    scanner.getOrCreateTag().getInt("SecondCornerX"),
+                    scanner.getOrCreateTag().getInt("SecondCornerY"),
+                    scanner.getOrCreateTag().getInt("SecondCornerZ")));
+        }
+        return InteractionResultHolder.consume(scanner);
+    }
+
+    private static void setCorner(ItemStack scanner, String prefix, BlockHitResult hit) {
+        scanner.getOrCreateTag().putInt(prefix + "X", hit.getBlockPos().getX());
+        scanner.getOrCreateTag().putInt(prefix + "Y", hit.getBlockPos().getY());
+        scanner.getOrCreateTag().putInt(prefix + "Z", hit.getBlockPos().getZ());
     }
 }
