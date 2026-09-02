@@ -1,0 +1,53 @@
+name: One-shot review tests
+
+on:
+  push:
+    branches: [fix/audit-hardening-0.8]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/audit-hardening-0.8
+          fetch-depth: 0
+      - name: Add retry regression coverage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/test/java/com/nstut/nstutlib/recipes/ModRecipeTransactionTest.java")
+          text = path.read_text()
+          marker = '''    private static TestRecipe recipe(IngredientItem[] inputs,\n'''
+          test = '''    @Test\n    void rolledBackOutputCanBeRetriedSafely() {\n        ItemStack output = new ItemStack(Items.DIAMOND, 65);\n        TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[] {new OutputItem(output, 1.0f)}, new FluidStack[0], new FluidStack[0]);\n        OneShotDivergingOutputHandler handler = new OneShotDivergingOutputHandler();\n\n        assertThrows(IllegalStateException.class, () -> recipe.assemble(handler, List.of()));\n        assertTrue(handler.getStackInSlot(0).isEmpty());\n        assertTrue(handler.getStackInSlot(1).isEmpty());\n\n        recipe.assemble(handler, List.of());\n        assertEquals(64, handler.getStackInSlot(0).getCount());\n        assertEquals(1, handler.getStackInSlot(1).getCount());\n    }\n\n'''
+          if marker not in text:
+              raise SystemExit("Recipe test insertion marker missing")
+          text = text.replace(marker, test + marker, 1)
+
+          class_marker = '''    private static final class DivergingOutputHandler extends ItemStackHandler {\n'''
+          helper = '''    private static final class OneShotDivergingOutputHandler extends ItemStackHandler {\n        private boolean diverged;\n\n        private OneShotDivergingOutputHandler() {\n            super(2);\n        }\n\n        @Override\n        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {\n            if (!simulate && slot == 1 && !diverged) {\n                diverged = true;\n                return stack;\n            }\n            return super.insertItem(slot, stack, simulate);\n        }\n    }\n\n'''
+          if class_marker not in text:
+              raise SystemExit("Handler insertion marker missing")
+          path.write_text(text.replace(class_marker, helper + class_marker, 1))
+
+          changelog = Path("CHANGELOG-0.8.md")
+          notes = changelog.read_text()
+          marker = "- Reduce multiblock validation churn and controller block-state writes."
+          replacement = marker + "\n- Validate active machines every tick and revalidate immediately before recipe start, preventing stale-validity consumption after structure breaks.\n- Preserve rolled-back active recipes after transactional capability divergence and retry with bounded backoff instead of failing the server tick."
+          if marker not in notes:
+              raise SystemExit("Changelog insertion marker missing")
+          changelog.write_text(notes.replace(marker, replacement, 1))
+
+          Path(".github/workflows/one-shot-review-tests.yml").unlink()
+          PY
+
+          git config user.name "Lily"
+          git config user.email "lily@localhost.invalid"
+          git add -A
+          git commit -m "test: cover safe transaction retry"
+          git push origin HEAD:fix/audit-hardening-0.8
