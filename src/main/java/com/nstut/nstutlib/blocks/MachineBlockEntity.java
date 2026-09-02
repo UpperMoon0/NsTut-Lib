@@ -20,13 +20,15 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public abstract class MachineBlockEntity extends BlockEntity implements MenuProvider, Multiblock {
-
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
     private static final int ACTIVE_STRUCTURE_CHECK_INTERVAL = 4;
     private static final int IDLE_STRUCTURE_CHECK_INTERVAL = 20;
@@ -93,7 +95,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         boolean previousStructureValid = blockEntity.isStructureValid;
         if (blockEntity.structureCheckCooldown <= 0) {
             blockEntity.isStructureValid = blockEntity.checkMultiblock(level, pos, state);
-            blockEntity.structureCheckCooldown = blockEntity.recipeHandler.isPresent()
+            blockEntity.structureCheckCooldown = blockEntity.hasActiveRecipe()
                     ? ACTIVE_STRUCTURE_CHECK_INTERVAL
                     : IDLE_STRUCTURE_CHECK_INTERVAL;
         } else {
@@ -113,7 +115,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             }
         }
 
-        boolean operating = blockEntity.isStructureValid && blockEntity.recipeHandler.isPresent();
+        boolean operating = blockEntity.isStructureValid && blockEntity.hasActiveRecipe();
         if (state.hasProperty(MachineBlock.OPERATING) && state.getValue(MachineBlock.OPERATING) != operating) {
             level.setBlock(pos, state.setValue(MachineBlock.OPERATING, operating), 3);
         }
@@ -121,6 +123,10 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         if (previousStructureValid != blockEntity.isStructureValid) {
             blockEntity.setChanged();
         }
+    }
+
+    private boolean hasActiveRecipe() {
+        return recipeHandler.isPresent() || activeRecipeId != null;
     }
 
     protected abstract void processRecipe(Level level, BlockPos blockPos);
@@ -133,14 +139,37 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                                                                            List<IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick) {
+        processRecipeTransaction(
+                level,
+                recipeType,
+                inputSlots,
+                inputTanks,
+                outputSlots,
+                outputTanks,
+                energyStorage,
+                energyPerTick,
+                null);
+    }
+
+    protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
+                                                                           RecipeType<R> recipeType,
+                                                                           IItemHandler inputSlots,
+                                                                           List<IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<IFluidHandler> outputTanks,
+                                                                           IEnergyStorage energyStorage,
+                                                                           int energyPerTick,
+                                                                           @Nullable Comparator<R> recipePreference) {
         restoreRecipeHandler(level, recipeType);
 
         if (recipeHandler.isEmpty()) {
-            Optional<R> nextRecipe = level.getRecipeManager()
+            Stream<R> candidates = level.getRecipeManager()
                     .getAllRecipesFor(recipeType)
                     .stream()
-                    .filter(recipe -> recipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks))
-                    .findFirst();
+                    .filter(recipe -> recipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks));
+            Optional<R> nextRecipe = recipePreference == null
+                    ? candidates.findFirst()
+                    : candidates.max(recipePreference);
             if (nextRecipe.isEmpty()) {
                 return;
             }
