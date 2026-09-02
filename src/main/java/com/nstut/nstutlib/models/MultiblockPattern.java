@@ -6,93 +6,127 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 
-import java.util.logging.Logger;
+import java.util.Map;
 
 @Getter
 public class MultiblockPattern {
 
-    private static final Logger LOGGER = Logger.getLogger(MultiblockPattern.class.getName());
-
-    private final MultiblockBlock[][][] pattern;
+    private MultiblockBlock[][][] pattern;
 
     public MultiblockPattern(MultiblockBlock[][][] pattern) {
+        if (pattern == null) {
+            throw new IllegalArgumentException("pattern cannot be null");
+        }
         this.pattern = pattern;
     }
 
     public boolean check(Level level,
                          BlockPos controllerPos,
-                         BlockState blockState,
+                         BlockState controllerState,
                          int southOffsetX,
                          int southOffsetY,
                          int southOffsetZ) {
-        MultiblockPattern multiPatternCopy = new MultiblockPattern(copyPattern(this.pattern));
-        MultiblockBlock[][][] patternCopy = multiPatternCopy.pattern;
+        for (int y = 0; y < pattern.length; y++) {
+            int patternY = pattern.length - 1 - y;
+            MultiblockBlock[][] layer = pattern[patternY];
+            for (int z = 0; z < layer.length; z++) {
+                MultiblockBlock[] row = layer[z];
+                for (int x = 0; x < row.length; x++) {
+                    MultiblockBlock expected = row[x];
+                    if (expected == null) {
+                        continue;
+                    }
 
-        for (int y = 0; y < patternCopy.length; y++) {
-            for (int z = 0; z < patternCopy[0].length; z++) {
-                for (int x = 0; x < patternCopy[0][0].length; x++) {
-                    // Calculate the position relative to the controller
-                    BlockPos currentBlockPos = rotateBlockPos(
+                    BlockPos currentPos = rotateBlockPos(
                             controllerPos,
                             southOffsetX,
                             southOffsetY,
                             southOffsetZ,
-                            patternCopy.length,
-                            patternCopy[0].length,
+                            pattern.length,
+                            layer.length,
                             x,
-                            patternCopy.length - 1 - y,
+                            patternY,
                             z,
-                            blockState
-                    );
-
-                    // Check if the current block matches the pattern
-                    if (patternCopy[patternCopy.length - 1 - y][z][x] != null
-                            && !level.getBlockState(currentBlockPos).is(patternCopy[patternCopy.length - 1 - y][z][x].getBlock())) {
+                            controllerState);
+                    BlockState actual = level.getBlockState(currentPos);
+                    if (!matches(expected, actual, controllerState)) {
                         return false;
                     }
                 }
             }
         }
-
         return true;
     }
 
-    /**
-     * Rotates the entire multiblock by rotating all its layers.
-     *
-     * @param direction the number of 90-degree clockwise rotations (0 to 3).
-     */
-    public void rotate(int direction) {
-        for (MultiblockBlock[][] layer : this.pattern) {
-            rotateLayer(layer, direction);
+    private boolean matches(MultiblockBlock expected, BlockState actual, BlockState controllerState) {
+        if (!actual.is(expected.getBlock())) {
+            return false;
         }
-    }
 
-    private MultiblockBlock[][][] copyPattern(MultiblockBlock[][][] original) {
-        MultiblockBlock[][][] copy = new MultiblockBlock[original.length][][];
-        for (int i = 0; i < original.length; i++) {
-            copy[i] = new MultiblockBlock[original[i].length][];
-            for (int j = 0; j < original[i].length; j++) {
-                copy[i][j] = original[i][j].clone();
+        for (Map.Entry<String, String> stateEntry : expected.getStates().entrySet()) {
+            // Controller operating state is runtime state, not a construction requirement.
+            if ("operating".equals(stateEntry.getKey())) {
+                continue;
             }
-        }
-        return copy;
-    }
 
-    private void rotateLayer(MultiblockBlock[][] layer, int direction) {
-        int size = layer.length;
-        for (int i = 0; i < direction; i++) {
-            for (int x = 0; x < size / 2; x++) {
-                for (int y = x; y < size - x - 1; y++) {
-                    MultiblockBlock temp = layer[x][y];
-                    layer[x][y] = layer[y][size - 1 - x];
-                    layer[y][size - 1 - x] = layer[size - 1 - x][size - 1 - y];
-                    layer[size - 1 - x][size - 1 - y] = layer[size - 1 - y][x];
-                    layer[size - 1 - y][x] = temp;
+            Property<?> property = actual.getBlock().getStateDefinition().getProperty(stateEntry.getKey());
+            if (property == null) {
+                return false;
+            }
+
+            String expectedValue = stateEntry.getValue();
+            if ("facing".equals(stateEntry.getKey())
+                    && controllerState.hasProperty(HorizontalDirectionalBlock.FACING)) {
+                Direction authoredDirection = Direction.byName(expectedValue);
+                if (authoredDirection != null && authoredDirection.getAxis().isHorizontal()) {
+                    expectedValue = rotateHorizontalDirection(
+                            controllerState.getValue(HorizontalDirectionalBlock.FACING),
+                            authoredDirection).getName();
                 }
             }
+
+            if (!propertyMatches(actual, property, expectedValue)) {
+                return false;
+            }
         }
+        return true;
+    }
+
+    private static <T extends Comparable<T>> boolean propertyMatches(BlockState state, Property<T> property, String expectedValue) {
+        return property.getValue(expectedValue)
+                .map(value -> state.getValue(property).equals(value))
+                .orElse(false);
+    }
+
+    public void rotate(int direction) {
+        int turns = Math.floorMod(direction, 4);
+        for (int turn = 0; turn < turns; turn++) {
+            for (int y = 0; y < pattern.length; y++) {
+                pattern[y] = rotateLayerClockwise(pattern[y]);
+            }
+        }
+    }
+
+    private MultiblockBlock[][] rotateLayerClockwise(MultiblockBlock[][] layer) {
+        if (layer.length == 0) {
+            return layer;
+        }
+        int width = layer[0].length;
+        for (MultiblockBlock[] row : layer) {
+            if (row.length != width) {
+                throw new IllegalArgumentException("Multiblock layers must be rectangular");
+            }
+        }
+
+        MultiblockBlock[][] rotated = new MultiblockBlock[width][layer.length];
+        for (int z = 0; z < layer.length; z++) {
+            for (int x = 0; x < width; x++) {
+                rotated[x][layer.length - 1 - z] = layer[z][x];
+            }
+        }
+        return rotated;
     }
 
     public static BlockPos rotateBlockPos(BlockPos controllerPos,
@@ -119,21 +153,22 @@ public class MultiblockPattern {
     }
 
     public static Direction rotateHorizontalDirection(Direction controllerDirection, Direction currentDirection) {
-        // Determine the number of clockwise steps the controller has rotated
+        if (!controllerDirection.getAxis().isHorizontal() || !currentDirection.getAxis().isHorizontal()) {
+            throw new IllegalArgumentException("Directions must be horizontal");
+        }
+
         int controllerOffset = switch (controllerDirection) {
-            case SOUTH -> 0; // No rotation needed when controller faces south
-            case WEST -> 1; // 90 degrees clockwise
-            case NORTH -> 2; // 180 degrees clockwise
-            case EAST -> 3; // 270 degrees clockwise
+            case SOUTH -> 0;
+            case WEST -> 1;
+            case NORTH -> 2;
+            case EAST -> 3;
             default -> throw new IllegalArgumentException("Invalid controller direction");
         };
 
-        // Rotate the currentDirection based on the controller's rotation
         Direction result = currentDirection;
         for (int i = 0; i < controllerOffset; i++) {
             result = result.getClockWise();
         }
-
         return result;
     }
 }

@@ -5,10 +5,11 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.fluids.FluidStack;
 
-import java.io.*;
+import java.util.Arrays;
 
 @Getter
-public class ModRecipeData implements Serializable {
+public final class ModRecipeData {
+    private static final int MAX_NETWORK_ENTRIES = 256;
 
     private final IngredientItem[] ingredientItems;
     private final OutputItem[] outputItems;
@@ -16,17 +17,32 @@ public class ModRecipeData implements Serializable {
     private final FluidStack[] fluidOutputs;
     private final int totalEnergy;
 
-    public ModRecipeData(IngredientItem[] inputs, OutputItem[] outputs, FluidStack[] fluidInputs, FluidStack[] fluidOutputs, int totalEnergy) {
-        this.ingredientItems = inputs;
-        this.outputItems = outputs;
-        this.fluidIngredients = fluidInputs;
-        this.fluidOutputs = fluidOutputs;
+    public ModRecipeData(IngredientItem[] inputs,
+                         OutputItem[] outputs,
+                         FluidStack[] fluidInputs,
+                         FluidStack[] fluidOutputs,
+                         int totalEnergy) {
+        this.ingredientItems = inputs == null ? new IngredientItem[0] : Arrays.copyOf(inputs, inputs.length);
+        this.outputItems = outputs == null ? new OutputItem[0] : Arrays.copyOf(outputs, outputs.length);
+        this.fluidIngredients = copyFluids(fluidInputs);
+        this.fluidOutputs = copyFluids(fluidOutputs);
         this.totalEnergy = totalEnergy;
+    }
+
+    private static FluidStack[] copyFluids(FluidStack[] fluids) {
+        if (fluids == null) {
+            return new FluidStack[0];
+        }
+        FluidStack[] copy = new FluidStack[fluids.length];
+        for (int i = 0; i < fluids.length; i++) {
+            copy[i] = fluids[i].copy();
+        }
+        return copy;
     }
 
     public int getIngredientIndex(Item item) {
         for (int i = 0; i < ingredientItems.length; i++) {
-            if (ingredientItems[i].getItemStack().getItem().equals(item)) {
+            if (ingredientItems[i].getItemStack().is(item)) {
                 return i;
             }
         }
@@ -56,27 +72,38 @@ public class ModRecipeData implements Serializable {
     }
 
     public static ModRecipeData fromBuf(FriendlyByteBuf buf) {
-        int ingredientItemCount = buf.readInt();
-        IngredientItem[] ingredientItems = new IngredientItem[ingredientItemCount];
-        for (int i = 0; i < ingredientItemCount; i++) {
+        int ingredientCount = readBoundedCount(buf, "item inputs");
+        IngredientItem[] ingredientItems = new IngredientItem[ingredientCount];
+        for (int i = 0; i < ingredientCount; i++) {
             ingredientItems[i] = new IngredientItem(buf.readItem(), buf.readBoolean());
         }
-        int outputItemCount = buf.readInt();
-        OutputItem[] outputItems = new OutputItem[outputItemCount];
-        for (int i = 0; i < outputItemCount; i++) {
+
+        int outputCount = readBoundedCount(buf, "item outputs");
+        OutputItem[] outputItems = new OutputItem[outputCount];
+        for (int i = 0; i < outputCount; i++) {
             outputItems[i] = new OutputItem(buf.readItem(), buf.readFloat());
         }
-        int fluidIngredientsLength = buf.readInt();
-        FluidStack[] fluidIngredients = new FluidStack[fluidIngredientsLength];
-        for (int i = 0; i < fluidIngredientsLength; i++) {
+
+        int fluidIngredientCount = readBoundedCount(buf, "fluid inputs");
+        FluidStack[] fluidIngredients = new FluidStack[fluidIngredientCount];
+        for (int i = 0; i < fluidIngredientCount; i++) {
             fluidIngredients[i] = buf.readFluidStack();
         }
-        int fluidResultsLength = buf.readInt();
-        FluidStack[] fluidResults = new FluidStack[fluidResultsLength];
-        for (int i = 0; i < fluidResultsLength; i++) {
-            fluidResults[i] = buf.readFluidStack();
+
+        int fluidOutputCount = readBoundedCount(buf, "fluid outputs");
+        FluidStack[] fluidOutputs = new FluidStack[fluidOutputCount];
+        for (int i = 0; i < fluidOutputCount; i++) {
+            fluidOutputs[i] = buf.readFluidStack();
         }
-        int totalEnergy = buf.readInt();
-        return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidResults, totalEnergy);
+
+        return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidOutputs, buf.readInt());
+    }
+
+    private static int readBoundedCount(FriendlyByteBuf buf, String name) {
+        int count = buf.readInt();
+        if (count < 0 || count > MAX_NETWORK_ENTRIES) {
+            throw new IllegalArgumentException("Invalid " + name + " count: " + count);
+        }
+        return count;
     }
 }

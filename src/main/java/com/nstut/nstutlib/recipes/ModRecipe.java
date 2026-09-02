@@ -4,21 +4,20 @@ import lombok.Getter;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Container>, RecipeFactory<T> {
     protected final ResourceLocation id;
@@ -75,332 +74,328 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         return List.of(recipe.getFluidOutputs());
     }
 
-    /**
-     * Method to check if the inputs (items and fluids) match the recipe requirements.
-     * This method ensures that the input slots and tanks contain the required ingredients.
-     *
-     * @param inputSlots     The item input slots
-     * @param inputTanks     The fluid input tanks
-     * @param outputSlots    The item cropId slots
-     * @param outputTanks    The fluid cropId tanks
-     * @return               True if the inputs match the recipe, false otherwise
-     */
-    public boolean recipeMatch(IItemHandler inputSlots, List<IFluidHandler>
-            inputTanks, IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
-        Map<Item, Integer> itemMap = new HashMap<>();
-        Map<Fluid, Integer> fluidMap = new HashMap<>();
-        boolean itemsMatch = false;
-        boolean fluidsMatch = false;
+    public boolean recipeMatch(IItemHandler inputSlots,
+                               List<IFluidHandler> inputTanks,
+                               IItemHandler outputSlots,
+                               List<IFluidHandler> outputTanks) {
+        return hasRequiredItems(inputSlots)
+                && hasRequiredFluids(inputTanks)
+                && canFitOutputs(outputSlots, outputTanks);
+    }
 
-        // Check if the cropId slots and tanks have enough space for the result
-        if (!outputSpaceAvailable(outputSlots, outputTanks)) {
+    private boolean hasRequiredItems(IItemHandler inputSlots) {
+        IngredientItem[] ingredients = recipe.getIngredientItems();
+        if (ingredients.length == 0) {
+            return true;
+        }
+        if (inputSlots == null) {
             return false;
         }
 
-        // Validate item ingredients
-        if (recipe.getIngredientItems() != null) {
-            // Store input items in a map to count quantities
-            for (int i = 0; i < inputSlots.getSlots(); i++) {
-                ItemStack stack = inputSlots.getStackInSlot(i);
-                int newQuantity = itemMap.getOrDefault(stack.getItem(), 0) + stack.getCount();
-                itemMap.put(stack.getItem(), newQuantity);
-            }
-            // Check if the input slots have enough of the required items
-            itemsMatch = itemsMatch(recipe.getIngredientItems(), itemMap);
-        }
-
-        // Validate fluid ingredients
-        if (recipe.getFluidIngredients() != null) {
-            // Store input fluids in a map to count amounts
-            for (IFluidHandler inputTank : inputTanks) {
-                for (int i = 0; i < inputTank.getTanks(); i++) {
-                    FluidStack fluidStack = inputTank.getFluidInTank(i);
-                    int newAmount = fluidMap.getOrDefault(fluidStack.getFluid(), 0) + fluidStack.getAmount();
-                    fluidMap.put(fluidStack.getFluid(), newAmount);
+        for (ItemStack required : aggregateRequiredItemStacks()) {
+            int remaining = required.getCount();
+            for (int slot = 0; slot < inputSlots.getSlots() && remaining > 0; slot++) {
+                ItemStack present = inputSlots.getStackInSlot(slot);
+                if (ItemStack.isSameItemSameTags(required, present)) {
+                    remaining -= Math.min(remaining, present.getCount());
                 }
             }
-            // Check if the input tanks have enough of the required fluids
-            fluidsMatch = fluidsMatch(recipe.getFluidIngredients(), fluidMap);
-        }
-
-        return itemsMatch && fluidsMatch;
-    }
-
-    /**
-     * Helper method to check if input items match the recipe's required items.
-     *
-     * @param ingredientItems The required item ingredients
-     * @param itemMap       The items present in the input slots
-     * @return                True if the input items match the required items, false otherwise
-     */
-    private boolean itemsMatch(IngredientItem[] ingredientItems, Map<Item, Integer> itemMap) {
-        Map<Item, Integer> requiredItems = new HashMap<>();
-        for (IngredientItem ingredientItem : ingredientItems) {
-            ItemStack itemStack = ingredientItem.getItemStack();
-            requiredItems.put(itemStack.getItem(), requiredItems.getOrDefault(itemStack.getItem(), 0) + itemStack.getCount());
-        }
-
-        for (Map.Entry<Item, Integer> entry : requiredItems.entrySet()) {
-            if (!itemMap.containsKey(entry.getKey()) || itemMap.get(entry.getKey()) < entry.getValue()) {
+            if (remaining > 0) {
                 return false;
             }
         }
-
         return true;
     }
 
-    /**
-     * Helper method to check if input fluids match the recipe's required fluids.
-     *
-     * @param fluidIngredients The required fluid ingredients
-     * @param fluidMap       The fluids present in the input tanks
-     * @return                 True if the input fluids match the required fluids, false otherwise
-     */
-    private boolean fluidsMatch(FluidStack[] fluidIngredients, Map<Fluid, Integer> fluidMap) {
-        Map<Fluid, Integer> requiredFluids = new HashMap<>();
-        for (FluidStack fluidInput : fluidIngredients) {
-            requiredFluids.put(fluidInput.getFluid(), requiredFluids.getOrDefault(fluidInput.getFluid(), 0) + fluidInput.getAmount());
+    private List<ItemStack> aggregateRequiredItemStacks() {
+        List<ItemStack> requiredStacks = new ArrayList<>();
+        for (IngredientItem ingredient : recipe.getIngredientItems()) {
+            ItemStack ingredientStack = ingredient.getItemStack();
+            ItemStack aggregate = requiredStacks.stream()
+                    .filter(existing -> ItemStack.isSameItemSameTags(existing, ingredientStack))
+                    .findFirst()
+                    .orElse(null);
+            if (aggregate == null) {
+                requiredStacks.add(ingredientStack.copy());
+            } else {
+                aggregate.setCount(aggregate.getCount() + ingredientStack.getCount());
+            }
+        }
+        return requiredStacks;
+    }
+
+    private boolean hasRequiredFluids(List<IFluidHandler> inputTanks) {
+        FluidStack[] ingredients = recipe.getFluidIngredients();
+        if (ingredients.length == 0) {
+            return true;
+        }
+        if (inputTanks == null || inputTanks.isEmpty()) {
+            return false;
         }
 
-        for (Map.Entry<Fluid, Integer> entry : requiredFluids.entrySet()) {
-            if (!fluidMap.containsKey(entry.getKey()) || fluidMap.get(entry.getKey()) < entry.getValue()) {
+        for (FluidStack required : aggregateRequiredFluidStacks()) {
+            int remaining = required.getAmount();
+            for (IFluidHandler handler : inputTanks) {
+                for (int tank = 0; tank < handler.getTanks() && remaining > 0; tank++) {
+                    FluidStack present = handler.getFluidInTank(tank);
+                    if (sameFluid(required, present)) {
+                        remaining -= Math.min(remaining, present.getAmount());
+                    }
+                }
+            }
+            if (remaining > 0) {
                 return false;
             }
         }
-
         return true;
     }
 
-    /**
-     * Checks if the cropId slots and tanks have enough space for the recipe result.
-     *
-     * @param outputSlots The item cropId slots
-     * @param outputTanks The fluid cropId tanks
-     * @return            True if there is enough space for the result, false otherwise
-     */
-    private boolean outputSpaceAvailable(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
-        if (outputSlots != null) {
-            int availableEmptyItemSlots = 0;
-            int availableItemSpace;
-
-            // Calculate the total number of empty slots for items
-            for (int i = 0; i < outputSlots.getSlots(); i++) {
-                ItemStack slot = outputSlots.getStackInSlot(i);
-                if (slot.isEmpty()) {
-                    availableEmptyItemSlots++;
-                }
+    private List<FluidStack> aggregateRequiredFluidStacks() {
+        List<FluidStack> requiredStacks = new ArrayList<>();
+        for (FluidStack ingredient : recipe.getFluidIngredients()) {
+            FluidStack aggregate = requiredStacks.stream()
+                    .filter(existing -> sameFluid(existing, ingredient))
+                    .findFirst()
+                    .orElse(null);
+            if (aggregate == null) {
+                requiredStacks.add(ingredient.copy());
+            } else {
+                aggregate.grow(ingredient.getAmount());
             }
+        }
+        return requiredStacks;
+    }
 
-            // Check if the item cropId slots have enough space for the result
-            for (OutputItem outputItem : recipe.getOutputItems()) {
-                availableItemSpace = 0;
-                ItemStack itemStack = outputItem.getItemStack();
-                int maxStackSize = itemStack.getMaxStackSize();
+    public boolean canFitOutputs(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
+        return itemOutputsFit(outputSlots) && fluidOutputsFit(outputTanks);
+    }
 
-                // Calculate the available space in non-empty slots for the current result item
-                for (int i = 0; i < outputSlots.getSlots(); i++) {
-                    ItemStack slot = outputSlots.getStackInSlot(i);
-                    if (!slot.isEmpty() && slot.getItem().equals(itemStack.getItem())) {
-                        availableItemSpace += (maxStackSize - slot.getCount());
+    private boolean itemOutputsFit(IItemHandler outputSlots) {
+        OutputItem[] outputs = recipe.getOutputItems();
+        if (outputs.length == 0) {
+            return true;
+        }
+        if (outputSlots == null) {
+            return false;
+        }
+
+        ItemStack[] virtualSlots = new ItemStack[outputSlots.getSlots()];
+        for (int slot = 0; slot < outputSlots.getSlots(); slot++) {
+            virtualSlots[slot] = outputSlots.getStackInSlot(slot).copy();
+        }
+
+        for (OutputItem output : outputs) {
+            ItemStack remaining = output.getItemStack().copy();
+            for (int slot = 0; slot < virtualSlots.length && !remaining.isEmpty(); slot++) {
+                if (!outputSlots.isItemValid(slot, remaining)) {
+                    continue;
+                }
+
+                ItemStack present = virtualSlots[slot];
+                int slotLimit = Math.min(outputSlots.getSlotLimit(slot), remaining.getMaxStackSize());
+                if (present.isEmpty()) {
+                    int moved = Math.min(slotLimit, remaining.getCount());
+                    ItemStack inserted = remaining.copy();
+                    inserted.setCount(moved);
+                    virtualSlots[slot] = inserted;
+                    remaining.shrink(moved);
+                } else if (ItemStack.isSameItemSameTags(present, remaining)) {
+                    int max = Math.min(outputSlots.getSlotLimit(slot), present.getMaxStackSize());
+                    int moved = Math.min(Math.max(0, max - present.getCount()), remaining.getCount());
+                    if (moved > 0) {
+                        present.grow(moved);
+                        remaining.shrink(moved);
                     }
                 }
+            }
+            if (!remaining.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-                // Calculate the total available space including empty slots
-                int totalAvailableSpace = availableItemSpace + (availableEmptyItemSlots * maxStackSize);
+    private boolean fluidOutputsFit(List<IFluidHandler> outputTanks) {
+        FluidStack[] outputs = recipe.getFluidOutputs();
+        if (outputs.length == 0) {
+            return true;
+        }
+        if (outputTanks == null || outputTanks.isEmpty()) {
+            return false;
+        }
 
-                // Check if the total available space is sufficient for the result item
-                if (totalAvailableSpace < itemStack.getCount()) {
-                    return false;
-                }
-
-                // Update the remaining empty slots for the next result item
-                int remainingCount = itemStack.getCount() - availableItemSpace;
-                if (remainingCount > 0) {
-                    availableEmptyItemSlots -= (int) Math.ceil((double) remainingCount / maxStackSize);
-                }
+        List<VirtualFluidTank> virtualTanks = new ArrayList<>();
+        for (IFluidHandler handler : outputTanks) {
+            for (int tank = 0; tank < handler.getTanks(); tank++) {
+                virtualTanks.add(new VirtualFluidTank(
+                        handler,
+                        tank,
+                        handler.getTankCapacity(tank),
+                        handler.getFluidInTank(tank).copy()));
             }
         }
 
-        if (outputTanks != null) {
-            int availableEmptyTankSpace = 0;
-            int availableFluidSpace;
-
-            // Calculate the total available empty space for fluids
-            for (IFluidHandler outputTank : outputTanks) {
-                for (int i = 0; i < outputTank.getTanks(); i++) {
-                    FluidStack subFluidStack = outputTank.getFluidInTank(i);
-                    if (subFluidStack.isEmpty()) {
-                        availableEmptyTankSpace += outputTank.getTankCapacity(i);
+        for (FluidStack output : outputs) {
+            FluidStack remaining = output.copy();
+            for (VirtualFluidTank tank : virtualTanks) {
+                if (remaining.isEmpty()) {
+                    break;
+                }
+                if (tank.fluid.isEmpty()) {
+                    if (!tank.handler.isFluidValid(tank.index, remaining)) {
+                        continue;
+                    }
+                    int moved = Math.min(tank.capacity, remaining.getAmount());
+                    tank.fluid = remaining.copy();
+                    tank.fluid.setAmount(moved);
+                    remaining.shrink(moved);
+                } else if (sameFluid(tank.fluid, remaining)) {
+                    int moved = Math.min(Math.max(0, tank.capacity - tank.fluid.getAmount()), remaining.getAmount());
+                    if (moved > 0) {
+                        tank.fluid.grow(moved);
+                        remaining.shrink(moved);
                     }
                 }
             }
-
-            // Check if the fluid tanks have enough space for the result fluids
-            for (FluidStack result : recipe.getFluidOutputs()) {
-                availableFluidSpace = 0;
-
-                for (IFluidHandler outputTank : outputTanks) {
-                    for (int i = 0; i < outputTank.getTanks(); i++) {
-                        FluidStack subFluidStack = outputTank.getFluidInTank(i);
-                        if (!subFluidStack.isEmpty() && subFluidStack.getFluid().equals(result.getFluid())) {
-                            availableFluidSpace += (outputTank.getTankCapacity(i) - subFluidStack.getAmount());
-                        }
-                    }
-                }
-
-                // Check if the total available space is sufficient for the result fluid
-                if (availableEmptyTankSpace + availableFluidSpace < result.getAmount()) {
-                    return false;
-                }
-
-                // Update the remaining empty tanks for the next result fluid
-                int remainingAmount = result.getAmount() - availableFluidSpace;
-                if (remainingAmount > 0) {
-                    availableEmptyTankSpace -= remainingAmount;
-                }
+            if (!remaining.isEmpty()) {
+                return false;
             }
         }
-
         return true;
     }
 
     public void assemble(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
-        // Insert the item results into the output slots
-        if (recipe.getOutputItems() != null) {
-            for (OutputItem outputItem : recipe.getOutputItems()) {
-                for (int i = 0; i < outputSlots.getSlots(); i++) {
-                    ItemStack slotItemStack = outputSlots.getStackInSlot(i);
-                    ItemStack outputItemStack = outputItem.getItemStack();
-                    float chance = outputItem.getChance();
-                    boolean createItem = true;
+        if (outputSlots != null) {
+            for (OutputItem output : recipe.getOutputItems()) {
+                float chance = output.getChance();
+                if (chance < 1.0f && ThreadLocalRandom.current().nextFloat() >= chance) {
+                    continue;
+                }
 
-                    if (chance < 1.0f) {
-                        createItem = Math.random() < chance;
-                    }
-
-                    if (slotItemStack.isEmpty() && createItem) {
-                        outputSlots.insertItem(i, outputItemStack.copy(), false);
-                        break;
-                    } else if (slotItemStack.getItem().equals(outputItemStack.getItem())
-                            && slotItemStack.getCount() < slotItemStack.getMaxStackSize()
-                            && createItem) {
-                        slotItemStack.grow(outputItemStack.getCount());
-                        break;
-                    }
+                ItemStack remaining = output.getItemStack().copy();
+                for (int slot = 0; slot < outputSlots.getSlots() && !remaining.isEmpty(); slot++) {
+                    remaining = outputSlots.insertItem(slot, remaining, false);
+                }
+                if (!remaining.isEmpty()) {
+                    throw new IllegalStateException("Output inventory changed during recipe commit: " + id);
                 }
             }
         }
 
-        // Insert the fluid results into the output tanks
-        if (recipe.getFluidOutputs() != null) {
-            for (FluidStack result : recipe.getFluidOutputs()) {
-                for (IFluidHandler outputTank : outputTanks) {
-                    FluidStack fluidToFill = result.copy();
-                    for (int i = 0; i < outputTank.getTanks(); i++) {
-                        FluidStack subFluidStack = outputTank.getFluidInTank(i);
-                        if (subFluidStack.isEmpty()) {
-                            outputTank.fill(fluidToFill, IFluidHandler.FluidAction.EXECUTE);
-                            break;
-                        } else if (subFluidStack.getFluid().equals(fluidToFill.getFluid()) && subFluidStack.getAmount() + fluidToFill.getAmount() <= outputTank.getTankCapacity(i)) {
-                            outputTank.fill(fluidToFill, IFluidHandler.FluidAction.EXECUTE);
-                            break;
-                        }
-                    }
+        for (FluidStack output : recipe.getFluidOutputs()) {
+            FluidStack remaining = output.copy();
+            for (IFluidHandler handler : safeFluidHandlers(outputTanks)) {
+                if (remaining.isEmpty()) {
+                    break;
                 }
+                int accepted = handler.fill(remaining, IFluidHandler.FluidAction.SIMULATE);
+                if (accepted <= 0) {
+                    continue;
+                }
+                FluidStack portion = remaining.copy();
+                portion.setAmount(Math.min(accepted, remaining.getAmount()));
+                int filled = handler.fill(portion, IFluidHandler.FluidAction.EXECUTE);
+                remaining.shrink(Math.max(0, filled));
+            }
+            if (!remaining.isEmpty()) {
+                throw new IllegalStateException("Output fluid handlers changed during recipe commit: " + id);
             }
         }
+    }
+
+    public boolean tryConsumeIngredients(IItemHandler inputSlots, List<IFluidHandler> inputTanks) {
+        if (!hasRequiredItems(inputSlots) || !hasRequiredFluids(inputTanks)) {
+            return false;
+        }
+
+        for (IngredientItem ingredient : recipe.getIngredientItems()) {
+            if (!ingredient.isConsumable()) {
+                continue;
+            }
+            ItemStack required = ingredient.getItemStack();
+            int remaining = required.getCount();
+            for (int slot = 0; slot < inputSlots.getSlots() && remaining > 0; slot++) {
+                ItemStack present = inputSlots.getStackInSlot(slot);
+                if (!ItemStack.isSameItemSameTags(required, present)) {
+                    continue;
+                }
+                ItemStack extracted = inputSlots.extractItem(slot, remaining, false);
+                remaining -= extracted.getCount();
+            }
+            if (remaining > 0) {
+                throw new IllegalStateException("Item input handler changed during recipe commit: " + id);
+            }
+        }
+
+        for (FluidStack ingredient : recipe.getFluidIngredients()) {
+            int remaining = ingredient.getAmount();
+            for (IFluidHandler handler : safeFluidHandlers(inputTanks)) {
+                if (remaining <= 0) {
+                    break;
+                }
+                FluidStack request = ingredient.copy();
+                request.setAmount(remaining);
+                FluidStack drained = handler.drain(request, IFluidHandler.FluidAction.EXECUTE);
+                if (sameFluid(ingredient, drained)) {
+                    remaining -= drained.getAmount();
+                }
+            }
+            if (remaining > 0) {
+                throw new IllegalStateException("Fluid input handler changed during recipe commit: " + id);
+            }
+        }
+        return true;
     }
 
     public void consumeIngredients(IItemHandler inputSlots, List<IFluidHandler> inputTanks) {
-        // Consume the required items
-        if (recipe.getIngredientItems() != null) {
-            Map<Item, Integer> requiredItemMap = new HashMap<>();
-            for (IngredientItem ingredientItem : recipe.getIngredientItems()) {
-                ItemStack itemStack = ingredientItem.getItemStack();
-                requiredItemMap.put(itemStack.getItem(), requiredItemMap.getOrDefault(itemStack.getItem(), 0) + itemStack.getCount());
-            }
-
-            for (Map.Entry<Item, Integer> entry : requiredItemMap.entrySet()) {
-                int remaining = entry.getValue();
-                for (int i = 0; i < inputSlots.getSlots() && remaining > 0; i++) {
-                    ItemStack slotStack = inputSlots.getStackInSlot(i);
-                    if (slotStack.getItem().equals(entry.getKey())) {
-                        int ingredientIndex = recipe.getIngredientIndex(slotStack.getItem());
-                        if (ingredientIndex != -1 && !recipe.getIngredientItems()[ingredientIndex].isConsumable()) {
-                            continue;
-                        }
-                        if (slotStack.getCount() <= remaining) {
-                            remaining -= slotStack.getCount();
-                            inputSlots.extractItem(i, slotStack.getCount(), false);
-                        } else {
-                            inputSlots.extractItem(i, remaining, false);
-                            remaining = 0;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Consume the required fluids
-        if (recipe.getFluidIngredients() != null) {
-            Map<Fluid, Integer> requiredFluidMap = new HashMap<>();
-            for (FluidStack fluidInput : recipe.getFluidIngredients()) {
-                requiredFluidMap.put(fluidInput.getFluid(), requiredFluidMap.getOrDefault(fluidInput.getFluid(), 0) + fluidInput.getAmount());
-            }
-
-            for (Map.Entry<Fluid, Integer> entry : requiredFluidMap.entrySet()) {
-                int remaining = entry.getValue();
-                for (IFluidHandler inputTank : inputTanks) {
-                    if (remaining <= 0) {
-                        break;
-                    }
-
-                    for (int i = 0; i < inputTank.getTanks() && remaining > 0; i++) {
-                        FluidStack tankFluid = inputTank.getFluidInTank(i);
-                        if (tankFluid.getFluid().equals(entry.getKey())) {
-                            if (tankFluid.getAmount() <= remaining) {
-                                remaining -= tankFluid.getAmount();
-                                inputTank.drain(tankFluid.getAmount(), IFluidHandler.FluidAction.EXECUTE);
-                            } else {
-                                inputTank.drain(remaining, IFluidHandler.FluidAction.EXECUTE);
-                                remaining = 0;
-                            }
-                        }
-                    }
-                }
-            }
+        if (!tryConsumeIngredients(inputSlots, inputTanks)) {
+            throw new IllegalStateException("Recipe inputs are no longer available: " + id);
         }
     }
 
-    /**
-     * Retrieves the total energy required for this recipe.
-     *
-     * @return The total energy cost of the recipe
-     */
+    private static List<IFluidHandler> safeFluidHandlers(List<IFluidHandler> handlers) {
+        return handlers == null ? Collections.emptyList() : handlers;
+    }
+
+    private static boolean sameFluid(FluidStack first, FluidStack second) {
+        return !first.isEmpty() && !second.isEmpty() && first.isFluidEqual(second);
+    }
+
     public int getTotalEnergy() {
         return recipe.getTotalEnergy();
     }
 
-    // Methods not used by BiotechRecipe, overridden to return default values
     @Override
-    public boolean matches(@NotNull Container pContainer, @NotNull Level pLevel) {
+    public boolean matches(@NotNull Container container, @NotNull Level level) {
         return false;
     }
 
-    @SuppressWarnings("NullableProblems")
     @Override
-    public  ItemStack assemble(@NotNull Container pContainer, @NotNull RegistryAccess pRegistryAccess) {
-        return null;
-    }
-
-    @SuppressWarnings("NullableProblems")
-    @Override
-    public ItemStack getResultItem(@NotNull RegistryAccess pRegistryAccess) {
-        return null;
+    public @NotNull ItemStack assemble(@NotNull Container container, @NotNull RegistryAccess registryAccess) {
+        return ItemStack.EMPTY;
     }
 
     @Override
-    public boolean canCraftInDimensions(int pWidth, int pHeight) {
+    public @NotNull ItemStack getResultItem(@NotNull RegistryAccess registryAccess) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public boolean canCraftInDimensions(int width, int height) {
         return true;
+    }
+
+    private static final class VirtualFluidTank {
+        private final IFluidHandler handler;
+        private final int index;
+        private final int capacity;
+        private FluidStack fluid;
+
+        private VirtualFluidTank(IFluidHandler handler, int index, int capacity, FluidStack fluid) {
+            this.handler = handler;
+            this.index = index;
+            this.capacity = capacity;
+            this.fluid = fluid;
+        }
     }
 }

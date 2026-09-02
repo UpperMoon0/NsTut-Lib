@@ -1,8 +1,8 @@
 package com.nstut.nstutlib.recipes;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -14,119 +14,125 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 
 public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> {
-    private static final Gson GSON = new Gson();
+    private static final int MAX_NETWORK_ENTRIES = 256;
 
     public RecipeSerializer<T> createSerializer(RecipeFactory<T> factory) {
         return new RecipeSerializer<T>() {
             @Override
-            public @NotNull T fromJson(@NotNull ResourceLocation pRecipeId, @NotNull JsonObject pSerializedRecipe) {
-                ModRecipeData recipeData = readRecipeDataFromJson(pSerializedRecipe);
-                return factory.create(pRecipeId, recipeData);
+            public @NotNull T fromJson(@NotNull ResourceLocation recipeId, @NotNull JsonObject json) {
+                try {
+                    ModRecipeData data = readRecipeDataFromJson(json);
+                    validate(data, recipeId.toString());
+                    return factory.create(recipeId, data);
+                } catch (RuntimeException exception) {
+                    if (exception instanceof JsonParseException jsonParseException) {
+                        throw jsonParseException;
+                    }
+                    throw new JsonParseException("Invalid recipe " + recipeId + ": " + exception.getMessage(), exception);
+                }
             }
 
             @Override
-            public T fromNetwork(@NotNull ResourceLocation pRecipeId, @NotNull FriendlyByteBuf pBuffer) {
-                IngredientItem[] itemIngredients = readItemIngredientArray(pBuffer);
-                OutputItem[] itemResults = readOutputItemArray(pBuffer);
-
-                FluidStack[] fluidIngredients = readFluidStackArray(pBuffer);
-                FluidStack[] fluidResults = readFluidStackArray(pBuffer);
-
-                int totalEnergy = pBuffer.readInt();
-
-                ModRecipeData recipeData = new ModRecipeData(itemIngredients, itemResults, fluidIngredients, fluidResults, totalEnergy);
-                return factory.create(pRecipeId, recipeData);
+            public T fromNetwork(@NotNull ResourceLocation recipeId, @NotNull FriendlyByteBuf buffer) {
+                IngredientItem[] itemIngredients = readItemIngredientArray(buffer);
+                OutputItem[] itemResults = readOutputItemArray(buffer);
+                FluidStack[] fluidIngredients = readFluidStackArray(buffer);
+                FluidStack[] fluidResults = readFluidStackArray(buffer);
+                ModRecipeData data = new ModRecipeData(itemIngredients, itemResults, fluidIngredients, fluidResults, buffer.readInt());
+                validate(data, recipeId.toString());
+                return factory.create(recipeId, data);
             }
 
             @Override
-            public void toNetwork(@NotNull FriendlyByteBuf pBuffer, @NotNull T pRecipe) {
-                ModRecipeData recipeContainer = pRecipe.getRecipe();
-
-                writeIngredientItemArray(pBuffer, recipeContainer.getIngredientItems());
-                writeOutputItemArray(pBuffer, recipeContainer.getOutputItems());
-
-                writeFluidStackArray(pBuffer, recipeContainer.getFluidIngredients());
-                writeFluidStackArray(pBuffer, recipeContainer.getFluidOutputs());
-
-                pBuffer.writeInt(recipeContainer.getTotalEnergy());
+            public void toNetwork(@NotNull FriendlyByteBuf buffer, @NotNull T recipe) {
+                ModRecipeData data = recipe.getRecipe();
+                writeIngredientItemArray(buffer, data.getIngredientItems());
+                writeOutputItemArray(buffer, data.getOutputItems());
+                writeFluidStackArray(buffer, data.getFluidIngredients());
+                writeFluidStackArray(buffer, data.getFluidOutputs());
+                buffer.writeInt(data.getTotalEnergy());
             }
         };
     }
 
-    private static ModRecipeData readRecipeDataFromJson(JsonObject pSerializedRecipe) {
-        IngredientItem[] ingredientItems = readIngredientItemArrayFromJson(pSerializedRecipe.getAsJsonArray("itemInputs"));
-        OutputItem[] outputItems = readOutputItemArrayFromJson(pSerializedRecipe.getAsJsonArray("itemOutputs"));
-
-        FluidStack[] fluidIngredients = readFluidStackArrayFromJson(pSerializedRecipe.getAsJsonArray("fluidInputs"));
-        FluidStack[] fluidResults = readFluidStackArrayFromJson(pSerializedRecipe.getAsJsonArray("fluidOutputs"));
-
-        int totalEnergy = pSerializedRecipe.get("energy").getAsInt();
-
+    private static ModRecipeData readRecipeDataFromJson(JsonObject json) {
+        IngredientItem[] ingredientItems = readIngredientItemArrayFromJson(json.getAsJsonArray("itemInputs"));
+        OutputItem[] outputItems = readOutputItemArrayFromJson(json.getAsJsonArray("itemOutputs"));
+        FluidStack[] fluidIngredients = readFluidStackArrayFromJson(json.getAsJsonArray("fluidInputs"));
+        FluidStack[] fluidResults = readFluidStackArrayFromJson(json.getAsJsonArray("fluidOutputs"));
+        int totalEnergy = json.has("energy") ? json.get("energy").getAsInt() : 0;
         return new ModRecipeData(ingredientItems, outputItems, fluidIngredients, fluidResults, totalEnergy);
     }
 
-    private static IngredientItem[] readItemIngredientArray(FriendlyByteBuf pBuffer) {
-        int length = pBuffer.readInt();
+    private static IngredientItem[] readItemIngredientArray(FriendlyByteBuf buffer) {
+        int length = readBoundedLength(buffer, "item inputs");
         IngredientItem[] array = new IngredientItem[length];
         for (int i = 0; i < length; i++) {
-            array[i] = new IngredientItem(pBuffer.readItem(), pBuffer.readBoolean());
+            array[i] = new IngredientItem(buffer.readItem(), buffer.readBoolean());
         }
         return array;
     }
 
-    private static OutputItem[] readOutputItemArray(FriendlyByteBuf pBuffer) {
-        int length = pBuffer.readInt();
+    private static OutputItem[] readOutputItemArray(FriendlyByteBuf buffer) {
+        int length = readBoundedLength(buffer, "item outputs");
         OutputItem[] array = new OutputItem[length];
         for (int i = 0; i < length; i++) {
-            array[i] = new OutputItem(pBuffer.readItem(), pBuffer.readFloat());
+            array[i] = new OutputItem(buffer.readItem(), buffer.readFloat());
         }
         return array;
     }
 
-    private static FluidStack[] readFluidStackArray(FriendlyByteBuf pBuffer) {
-        int length = pBuffer.readInt();
+    private static FluidStack[] readFluidStackArray(FriendlyByteBuf buffer) {
+        int length = readBoundedLength(buffer, "fluids");
         FluidStack[] array = new FluidStack[length];
         for (int i = 0; i < length; i++) {
-            array[i] = pBuffer.readFluidStack();
+            array[i] = buffer.readFluidStack();
         }
         return array;
     }
 
-    private static void writeIngredientItemArray(FriendlyByteBuf pBuffer, IngredientItem[] array) {
-        pBuffer.writeInt(array.length);
+    private static int readBoundedLength(FriendlyByteBuf buffer, String name) {
+        int length = buffer.readInt();
+        if (length < 0 || length > MAX_NETWORK_ENTRIES) {
+            throw new IllegalArgumentException("Invalid " + name + " count: " + length);
+        }
+        return length;
+    }
+
+    private static void writeIngredientItemArray(FriendlyByteBuf buffer, IngredientItem[] array) {
+        buffer.writeInt(array.length);
         for (IngredientItem item : array) {
-            pBuffer.writeItem(item.getItemStack());
-            pBuffer.writeBoolean(item.isConsumable());
+            buffer.writeItem(item.getItemStack());
+            buffer.writeBoolean(item.isConsumable());
         }
     }
 
-    private static void writeOutputItemArray(FriendlyByteBuf pBuffer, OutputItem[] array) {
-        pBuffer.writeInt(array.length);
+    private static void writeOutputItemArray(FriendlyByteBuf buffer, OutputItem[] array) {
+        buffer.writeInt(array.length);
         for (OutputItem item : array) {
-            pBuffer.writeItem(item.getItemStack());
-            pBuffer.writeFloat(item.getChance());
+            buffer.writeItem(item.getItemStack());
+            buffer.writeFloat(item.getChance());
         }
     }
 
-    private static void writeFluidStackArray(FriendlyByteBuf pBuffer, FluidStack[] array) {
-        pBuffer.writeInt(array.length);
+    private static void writeFluidStackArray(FriendlyByteBuf buffer, FluidStack[] array) {
+        buffer.writeInt(array.length);
         for (FluidStack fluid : array) {
-            pBuffer.writeFluidStack(fluid);
+            buffer.writeFluidStack(fluid);
         }
     }
 
     private static IngredientItem[] readIngredientItemArrayFromJson(JsonArray ingredientArray) {
         return Optional.ofNullable(ingredientArray)
                 .map(array -> {
-                    IngredientItem[] ingredientItems = new IngredientItem[array.size()];
+                    IngredientItem[] items = new IngredientItem[array.size()];
                     for (int i = 0; i < array.size(); i++) {
-                        JsonObject ingredientObject = array.get(i).getAsJsonObject();
-                        JsonObject itemStackObject = ingredientObject.getAsJsonObject("itemStack");
-                        ItemStack itemStack = readItemStack(itemStackObject);
-                        boolean isConsumable = ingredientObject.has("isConsumable") && ingredientObject.get("isConsumable").getAsBoolean();
-                        ingredientItems[i] = new IngredientItem(itemStack, isConsumable);
+                        JsonObject object = array.get(i).getAsJsonObject();
+                        ItemStack stack = readItemStack(object.getAsJsonObject("itemStack"));
+                        boolean consumable = !object.has("isConsumable") || object.get("isConsumable").getAsBoolean();
+                        items[i] = new IngredientItem(stack, consumable);
                     }
-                    return ingredientItems;
+                    return items;
                 })
                 .orElse(new IngredientItem[0]);
     }
@@ -134,36 +140,76 @@ public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> 
     private static OutputItem[] readOutputItemArrayFromJson(JsonArray outputArray) {
         return Optional.ofNullable(outputArray)
                 .map(array -> {
-                    OutputItem[] outputItems = new OutputItem[array.size()];
+                    OutputItem[] items = new OutputItem[array.size()];
                     for (int i = 0; i < array.size(); i++) {
-                        JsonObject outputObject = array.get(i).getAsJsonObject();
-                        JsonObject itemStackObject = outputObject.getAsJsonObject("itemStack");
-                        ItemStack itemStack = readItemStack(itemStackObject);
-                        float chance = outputObject.has("chance") ? outputObject.get("chance").getAsFloat() : 1.0f;
-                        outputItems[i] = new OutputItem(itemStack, chance);
+                        JsonObject object = array.get(i).getAsJsonObject();
+                        ItemStack stack = readItemStack(object.getAsJsonObject("itemStack"));
+                        float chance = object.has("chance") ? object.get("chance").getAsFloat() : 1.0f;
+                        items[i] = new OutputItem(stack, chance);
                     }
-                    return outputItems;
+                    return items;
                 })
                 .orElse(new OutputItem[0]);
     }
 
-    private static FluidStack[] readFluidStackArrayFromJson(JsonArray jsonArray) {
-        return Optional.ofNullable(jsonArray)
-                .map(array -> {
-                    FluidStack[] fluidStacks = new FluidStack[array.size()];
-                    for (int i = 0; i < array.size(); i++) {
-                        fluidStacks[i] = readFluidStack(array.get(i).getAsJsonObject());
+    private static FluidStack[] readFluidStackArrayFromJson(JsonArray array) {
+        return Optional.ofNullable(array)
+                .map(jsonArray -> {
+                    FluidStack[] fluids = new FluidStack[jsonArray.size()];
+                    for (int i = 0; i < jsonArray.size(); i++) {
+                        fluids[i] = readFluidStack(jsonArray.get(i).getAsJsonObject());
                     }
-                    return fluidStacks;
+                    return fluids;
                 })
                 .orElse(new FluidStack[0]);
     }
 
     private static ItemStack readItemStack(JsonObject json) {
-        return ItemStack.CODEC.decode(JsonOps.INSTANCE, json).result().orElseThrow().getFirst();
+        if (json == null) {
+            throw new JsonParseException("Missing itemStack");
+        }
+        return ItemStack.CODEC.decode(JsonOps.INSTANCE, json)
+                .result()
+                .orElseThrow(() -> new JsonParseException("Invalid itemStack: " + json))
+                .getFirst();
     }
 
     private static FluidStack readFluidStack(JsonObject json) {
-        return FluidStack.CODEC.decode(JsonOps.INSTANCE, json).result().orElseThrow().getFirst();
+        if (json == null) {
+            throw new JsonParseException("Missing fluid stack");
+        }
+        return FluidStack.CODEC.decode(JsonOps.INSTANCE, json)
+                .result()
+                .orElseThrow(() -> new JsonParseException("Invalid fluid stack: " + json))
+                .getFirst();
+    }
+
+    private static void validate(ModRecipeData data, String recipeId) {
+        if (data.getTotalEnergy() < 0) {
+            throw new JsonParseException(recipeId + " has negative energy");
+        }
+        for (IngredientItem input : data.getIngredientItems()) {
+            if (input == null || input.getItemStack().isEmpty() || input.getItemStack().getCount() <= 0) {
+                throw new JsonParseException(recipeId + " has an invalid item input");
+            }
+        }
+        for (OutputItem output : data.getOutputItems()) {
+            if (output == null || output.getItemStack().isEmpty() || output.getItemStack().getCount() <= 0) {
+                throw new JsonParseException(recipeId + " has an invalid item output");
+            }
+            if (!Float.isFinite(output.getChance()) || output.getChance() < 0.0f || output.getChance() > 1.0f) {
+                throw new JsonParseException(recipeId + " has an invalid output chance " + output.getChance());
+            }
+        }
+        for (FluidStack fluid : data.getFluidIngredients()) {
+            if (fluid == null || fluid.isEmpty() || fluid.getAmount() <= 0) {
+                throw new JsonParseException(recipeId + " has an invalid fluid input");
+            }
+        }
+        for (FluidStack fluid : data.getFluidOutputs()) {
+            if (fluid == null || fluid.isEmpty() || fluid.getAmount() <= 0) {
+                throw new JsonParseException(recipeId + " has an invalid fluid output");
+            }
+        }
     }
 }

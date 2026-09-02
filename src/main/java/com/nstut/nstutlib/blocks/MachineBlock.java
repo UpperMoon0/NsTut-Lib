@@ -10,7 +10,12 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -24,81 +29,78 @@ import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
-import java.lang.reflect.InvocationTargetException;
+import java.util.Objects;
+import java.util.function.BiFunction;
 
 public class MachineBlock extends BaseEntityBlock {
     public static final BooleanProperty OPERATING = BooleanProperty.create("operating");
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
 
-    private final Class<? extends MachineBlockEntity> blockEntityClass;
-
     private static final Logger LOGGER = LogUtils.getLogger();
+    private final BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory;
 
-    public MachineBlock(Class<? extends MachineBlockEntity> blockEntityClass) {
+    public MachineBlock(BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory) {
         super(BlockBehaviour.Properties.copy(Blocks.GRAY_CONCRETE).strength(2f).sound(SoundType.METAL));
-        this.blockEntityClass = blockEntityClass;
-        this.registerDefaultState(this.stateDefinition.any()
+        this.blockEntityFactory = Objects.requireNonNull(blockEntityFactory, "blockEntityFactory");
+        registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(OPERATING, Boolean.FALSE)
-        );
+                .setValue(OPERATING, Boolean.FALSE));
     }
 
     @Override
     public BlockEntity newBlockEntity(@NotNull BlockPos pos, @NotNull BlockState state) {
         try {
-            return blockEntityClass.getConstructor(BlockPos.class, BlockState.class).newInstance(pos, state);
-        } catch (NoSuchMethodException e) {
-            LOGGER.error("No constructor found in " + blockEntityClass.getName() + " with parameters (BlockPos, BlockState)", e);
-        } catch (IllegalAccessException e) {
-            LOGGER.error("Constructor in " + blockEntityClass.getName() + " is not accessible", e);
-        } catch (InstantiationException e) {
-            LOGGER.error("Cannot instantiate " + blockEntityClass.getName(), e);
-        } catch (InvocationTargetException e) {
-            LOGGER.error("Constructor in " + blockEntityClass.getName() + " cannot be invoked", e);
-        } catch (Throwable throwable) {
-            LOGGER.error("Cannot create new instance of " + blockEntityClass.getName(), throwable);
+            return blockEntityFactory.apply(pos, state);
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to create machine block entity at {}", pos, exception);
+            return null;
         }
-        return null;
     }
 
     @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> blockStateBuilder) {
-        blockStateBuilder.add(FACING, OPERATING);
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING, OPERATING);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
-    public @NotNull RenderShape getRenderShape(@NotNull BlockState pState) {
+    @Override
+    public @NotNull RenderShape getRenderShape(@NotNull BlockState state) {
         return RenderShape.MODEL;
     }
 
     @Override
     public @NotNull InteractionResult use(@NotNull BlockState state,
-                                          Level level,
+                                          @NotNull Level level,
                                           @NotNull BlockPos pos,
                                           @NotNull Player player,
                                           @NotNull InteractionHand hand,
                                           @NotNull BlockHitResult hit) {
-        if (!level.isClientSide) {
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity != null) {
-                NetworkHooks.openScreen((ServerPlayer) player, (MenuProvider) blockEntity, pos);
-            }
-            return InteractionResult.CONSUME;
-        } else
+        if (level.isClientSide) {
             return InteractionResult.SUCCESS;
+        }
+
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (player instanceof ServerPlayer serverPlayer && blockEntity instanceof MenuProvider menuProvider) {
+            NetworkHooks.openScreen(serverPlayer, menuProvider, pos);
+            return InteractionResult.CONSUME;
+        }
+        return InteractionResult.PASS;
     }
 
     @Override
-    public <U extends BlockEntity> BlockEntityTicker<U> getTicker(Level pLevel,
-                                                                  @NotNull BlockState pState,
-                                                                  @NotNull BlockEntityType<U> pBlockEntityType) {
-        return pLevel.isClientSide ? null : (level, blockPos, blockState, blockEntity) -> {
-            if (blockEntity instanceof MachineBlockEntity) {
-                MachineBlockEntity.serverTick(level, blockPos, blockState, blockEntity);
+    public <U extends BlockEntity> BlockEntityTicker<U> getTicker(Level level,
+                                                                  @NotNull BlockState state,
+                                                                  @NotNull BlockEntityType<U> blockEntityType) {
+        if (level.isClientSide) {
+            return null;
+        }
+        return (tickLevel, pos, tickState, blockEntity) -> {
+            if (blockEntity instanceof MachineBlockEntity machineBlockEntity) {
+                MachineBlockEntity.serverTick(tickLevel, pos, tickState, machineBlockEntity);
             }
         };
     }
