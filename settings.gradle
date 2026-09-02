@@ -11,3 +11,6 @@ pluginManagement {
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
 }
+
+// Keep the published Maven artifact stable regardless of checkout directory name.
+rootProject.name = 'MC-Mod-NsTut-Lib'
