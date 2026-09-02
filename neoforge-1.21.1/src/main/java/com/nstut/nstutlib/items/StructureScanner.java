@@ -2,6 +2,8 @@ package com.nstut.nstutlib.items;
 
 import com.nstut.nstutlib.network.PacketRegistries;
 import com.nstut.nstutlib.network.StructureScannerS2CPacket;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -9,6 +11,7 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -40,20 +43,23 @@ public class StructureScanner extends Item {
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
+            CompoundTag tag = scanner.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             PacketRegistries.sendToPlayer(serverPlayer, new StructureScannerS2CPacket(
-                    scanner.getOrCreateTag().getInt("FirstCornerX"),
-                    scanner.getOrCreateTag().getInt("FirstCornerY"),
-                    scanner.getOrCreateTag().getInt("FirstCornerZ"),
-                    scanner.getOrCreateTag().getInt("SecondCornerX"),
-                    scanner.getOrCreateTag().getInt("SecondCornerY"),
-                    scanner.getOrCreateTag().getInt("SecondCornerZ")));
+                    tag.getInt("FirstCornerX"),
+                    tag.getInt("FirstCornerY"),
+                    tag.getInt("FirstCornerZ"),
+                    tag.getInt("SecondCornerX"),
+                    tag.getInt("SecondCornerY"),
+                    tag.getInt("SecondCornerZ")));
         }
         return InteractionResultHolder.consume(scanner);
     }
 
     private static void setCorner(ItemStack scanner, String prefix, BlockHitResult hit) {
-        scanner.getOrCreateTag().putInt(prefix + "X", hit.getBlockPos().getX());
-        scanner.getOrCreateTag().putInt(prefix + "Y", hit.getBlockPos().getY());
-        scanner.getOrCreateTag().putInt(prefix + "Z", hit.getBlockPos().getZ());
+        CustomData.update(DataComponents.CUSTOM_DATA, scanner, tag -> {
+            tag.putInt(prefix + "X", hit.getBlockPos().getX());
+            tag.putInt(prefix + "Y", hit.getBlockPos().getY());
+            tag.putInt(prefix + "Z", hit.getBlockPos().getZ());
+        });
     }
 }

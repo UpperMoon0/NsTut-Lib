@@ -2,7 +2,7 @@ package com.nstut.nstutlib.network;
 
 import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.items.StructureScanner;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.chat.Component;
@@ -10,6 +10,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,13 +39,14 @@ public record StructureScannerC2SPacket(int firstX, int firstY, int firstZ,
         ItemStack scanner = findScanner(player);
         if (scanner.isEmpty()) return;
 
-        CompoundTag tag = scanner.getOrCreateTag();
-        tag.putInt("FirstCornerX", firstX);
-        tag.putInt("FirstCornerY", firstY);
-        tag.putInt("FirstCornerZ", firstZ);
-        tag.putInt("SecondCornerX", secondX);
-        tag.putInt("SecondCornerY", secondY);
-        tag.putInt("SecondCornerZ", secondZ);
+        CustomData.update(DataComponents.CUSTOM_DATA, scanner, tag -> {
+            tag.putInt("FirstCornerX", firstX);
+            tag.putInt("FirstCornerY", firstY);
+            tag.putInt("FirstCornerZ", firstZ);
+            tag.putInt("SecondCornerX", secondX);
+            tag.putInt("SecondCornerY", secondY);
+            tag.putInt("SecondCornerZ", secondZ);
+        });
         player.getInventory().setChanged();
         player.displayClientMessage(Component.literal("Structure corners updated"), true);
     }

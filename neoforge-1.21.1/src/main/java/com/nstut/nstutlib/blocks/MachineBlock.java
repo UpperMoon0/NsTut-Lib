@@ -1,10 +1,10 @@
 package com.nstut.nstutlib.blocks;
 
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player;
@@ -44,6 +44,12 @@ public class MachineBlock extends BaseEntityBlock {
         registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(OPERATING, Boolean.FALSE));
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        // The machine factory is supplied by the owning mod's registry and is not data-driven.
+        return MapCodec.unit(this);
     }
 
     @Override
