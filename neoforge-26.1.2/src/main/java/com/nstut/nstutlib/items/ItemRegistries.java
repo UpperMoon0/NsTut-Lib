@@ -11,8 +11,8 @@ import java.util.function.Supplier;
 public final class ItemRegistries {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(NsTutLib.MOD_ID);
 
-    public static final Supplier<Item> SMART_HAMMER = ITEMS.register("smart_hammer", () -> new SmartHammer(new Item.Properties().stacksTo(1)));
-    public static final Supplier<Item> STRUCTURE_SCANNER = ITEMS.register("structure_scanner", () -> new StructureScanner(new Item.Properties().stacksTo(1)));
+    public static final Supplier<Item> SMART_HAMMER = ITEMS.registerItem("smart_hammer", SmartHammer::new, properties -> properties.stacksTo(1));
+    public static final Supplier<Item> STRUCTURE_SCANNER = ITEMS.registerItem("structure_scanner", StructureScanner::new, properties -> properties.stacksTo(1));
 
     public static final Set<Supplier<Item>> ITEM_SET = new HashSet<>() {{
         add(SMART_HAMMER);
