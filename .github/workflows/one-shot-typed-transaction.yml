@@ -1,0 +1,68 @@
+name: One-shot typed transaction failure
+
+on:
+  push:
+    branches: [fix/audit-hardening-0.8]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/audit-hardening-0.8
+          fetch-depth: 0
+      - name: Narrow transaction failure handling
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          exception_path = Path("src/main/java/com/nstut/nstutlib/recipes/RecipeTransactionException.java")
+          exception_path.write_text('''package com.nstut.nstutlib.recipes;\n\n/**\n * Signals a recipe capability commit that failed without leaving a partial mutation behind.\n * Machine processing may safely preserve the active recipe and retry these failures later.\n */\npublic final class RecipeTransactionException extends IllegalStateException {\n    public RecipeTransactionException(String message) {\n        super(message);\n    }\n\n    public RecipeTransactionException(String message, Throwable cause) {\n        super(message, cause);\n    }\n}\n''')
+
+          recipe_path = Path("src/main/java/com/nstut/nstutlib/recipes/ModRecipe.java")
+          recipe = recipe_path.read_text()
+          count = recipe.count("throw new IllegalStateException(")
+          if count < 8:
+              raise SystemExit(f"Expected transaction IllegalStateException sites, found {count}")
+          recipe_path.write_text(recipe.replace("throw new IllegalStateException(", "throw new RecipeTransactionException("))
+
+          machine_path = Path("src/main/java/com/nstut/nstutlib/blocks/MachineBlockEntity.java")
+          machine = machine_path.read_text()
+          import_marker = "import com.nstut.nstutlib.recipes.ModRecipe;\n"
+          if import_marker not in machine:
+              raise SystemExit("MachineBlockEntity import marker missing")
+          machine = machine.replace(import_marker, import_marker + "import com.nstut.nstutlib.recipes.RecipeTransactionException;\n", 1)
+          old_catch = "                } catch (IllegalStateException exception) {"
+          new_catch = "                } catch (RecipeTransactionException exception) {"
+          if old_catch not in machine:
+              raise SystemExit("MachineBlockEntity transaction catch marker missing")
+          machine_path.write_text(machine.replace(old_catch, new_catch, 1))
+
+          test_path = Path("src/test/java/com/nstut/nstutlib/recipes/ModRecipeTransactionTest.java")
+          tests = test_path.read_text()
+          count = tests.count("assertThrows(IllegalStateException.class")
+          if count < 4:
+              raise SystemExit(f"Expected four transaction assertions, found {count}")
+          test_path.write_text(tests.replace("assertThrows(IllegalStateException.class", "assertThrows(RecipeTransactionException.class"))
+
+          docs_path = Path("docs/recipes-0.8.md")
+          docs = docs_path.read_text()
+          marker = "A rolled-back capability divergence preserves the active recipe and is retried after a bounded backoff instead of escaping the server tick."
+          replacement = "A rolled-back capability divergence raises `RecipeTransactionException`; the machine layer catches only that typed recoverable failure, preserves the active recipe, and retries after a bounded backoff instead of escaping the server tick."
+          if marker not in docs:
+              raise SystemExit("Recipe transaction docs marker missing")
+          docs_path.write_text(docs.replace(marker, replacement, 1))
+
+          Path(".github/workflows/one-shot-typed-transaction.yml").unlink()
+          PY
+
+          git config user.name "Lily"
+          git config user.email "lily@localhost.invalid"
+          git add -A
+          git commit -m "refactor: type recoverable recipe failures"
+          git push origin HEAD:fix/audit-hardening-0.8
