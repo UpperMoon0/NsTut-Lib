@@ -1,40 +1,27 @@
 package com.nstut.nstutlib.network;
 
+import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.client.ClientPacketHandlers;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record StructureScannerS2CPacket(int firstX, int firstY, int firstZ,
+                                        int secondX, int secondY, int secondZ) implements CustomPacketPayload {
+    public static final Type<StructureScannerS2CPacket> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(NsTutLib.MOD_ID, "structure_scanner_s2c"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, StructureScannerS2CPacket> STREAM_CODEC =
+            StreamCodec.ofMember(StructureScannerS2CPacket::write, StructureScannerS2CPacket::new);
 
-public class StructureScannerS2CPacket {
-    private final int firstX;
-    private final int firstY;
-    private final int firstZ;
-    private final int secondX;
-    private final int secondY;
-    private final int secondZ;
-
-    public StructureScannerS2CPacket(int firstX, int firstY, int firstZ, int secondX, int secondY, int secondZ) {
-        this.firstX = firstX;
-        this.firstY = firstY;
-        this.firstZ = firstZ;
-        this.secondX = secondX;
-        this.secondY = secondY;
-        this.secondZ = secondZ;
+    public StructureScannerS2CPacket(RegistryFriendlyByteBuf buf) {
+        this(buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt());
     }
 
-    public StructureScannerS2CPacket(FriendlyByteBuf buf) {
-        firstX = buf.readInt();
-        firstY = buf.readInt();
-        firstZ = buf.readInt();
-        secondX = buf.readInt();
-        secondY = buf.readInt();
-        secondZ = buf.readInt();
-    }
-
-    public void toBytes(FriendlyByteBuf buf) {
+    private void write(RegistryFriendlyByteBuf buf) {
         buf.writeInt(firstX);
         buf.writeInt(firstY);
         buf.writeInt(firstZ);
@@ -43,12 +30,15 @@ public class StructureScannerS2CPacket {
         buf.writeInt(secondZ);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context context = supplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                Dist.CLIENT,
-                () -> () -> ClientPacketHandlers.openStructureScanner(
-                        firstX, firstY, firstZ, secondX, secondY, secondZ)));
-        context.setPacketHandled(true);
+    public void handle(IPayloadContext context) {
+        if (FMLEnvironment.dist.isClient()) {
+            context.enqueueWork(() -> ClientPacketHandlers.openStructureScanner(
+                    firstX, firstY, firstZ, secondX, secondY, secondZ));
+        }
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

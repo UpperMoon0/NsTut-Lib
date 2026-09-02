@@ -7,18 +7,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
-public class CreativeTabRegistries {
+import java.util.function.Supplier;
+
+public final class CreativeTabRegistries {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, NsTutLib.MOD_ID);
+
     @SuppressWarnings("unused")
-    public static final RegistryObject<CreativeModeTab> NSTUT_LIB_TAB = CREATIVE_MODE_TABS.register("nstutlib", () -> CreativeModeTab.builder()
+    public static final Supplier<CreativeModeTab> NSTUT_LIB_TAB = CREATIVE_MODE_TABS.register("nstutlib", () -> CreativeModeTab.builder()
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ItemRegistries.SMART_HAMMER.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                for (RegistryObject<Item> i : ItemRegistries.ITEM_SET) {
-                    output.accept(i.get());
+                for (Supplier<Item> item : ItemRegistries.ITEM_SET) {
+                    output.accept(item.get());
                 }
                 if (NsTutLib.IS_DEV_ENV) {
                     output.accept(ItemRegistries.STRUCTURE_SCANNER.get());
@@ -26,4 +28,7 @@ public class CreativeTabRegistries {
             })
             .title(Component.translatable("itemGroup.nstutlib"))
             .build());
+
+    private CreativeTabRegistries() {
+    }
 }

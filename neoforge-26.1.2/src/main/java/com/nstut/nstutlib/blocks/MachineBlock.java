@@ -1,10 +1,10 @@
 package com.nstut.nstutlib.blocks;
 
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Player;
@@ -25,7 +25,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -40,11 +39,17 @@ public class MachineBlock extends BaseEntityBlock {
     private final BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory;
 
     public MachineBlock(BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory) {
-        super(BlockBehaviour.Properties.copy(Blocks.GRAY_CONCRETE).strength(2f).sound(SoundType.METAL));
+        super(BlockBehaviour.Properties.ofFullCopy(Blocks.GRAY_CONCRETE).strength(2f).sound(SoundType.METAL));
         this.blockEntityFactory = Objects.requireNonNull(blockEntityFactory, "blockEntityFactory");
         registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(OPERATING, Boolean.FALSE));
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        // The machine factory is supplied by the owning mod's registry and is not data-driven.
+        return MapCodec.unit(this);
     }
 
     @Override
@@ -68,24 +73,23 @@ public class MachineBlock extends BaseEntityBlock {
     }
 
     @Override
-    public @NotNull RenderShape getRenderShape(@NotNull BlockState state) {
+    protected @NotNull RenderShape getRenderShape(@NotNull BlockState state) {
         return RenderShape.MODEL;
     }
 
     @Override
-    public @NotNull InteractionResult use(@NotNull BlockState state,
-                                          @NotNull Level level,
-                                          @NotNull BlockPos pos,
-                                          @NotNull Player player,
-                                          @NotNull InteractionHand hand,
-                                          @NotNull BlockHitResult hit) {
+    protected @NotNull InteractionResult useWithoutItem(@NotNull BlockState state,
+                                                        @NotNull Level level,
+                                                        @NotNull BlockPos pos,
+                                                        @NotNull Player player,
+                                                        @NotNull BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
 
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (player instanceof ServerPlayer serverPlayer && blockEntity instanceof MenuProvider menuProvider) {
-            NetworkHooks.openScreen(serverPlayer, menuProvider, pos);
+            serverPlayer.openMenu(menuProvider, pos);
             return InteractionResult.CONSUME;
         }
         return InteractionResult.PASS;
