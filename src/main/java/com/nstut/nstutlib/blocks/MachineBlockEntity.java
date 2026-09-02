@@ -30,8 +30,9 @@ import java.util.stream.Stream;
 
 public abstract class MachineBlockEntity extends BlockEntity implements MenuProvider, Multiblock {
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
-    private static final int ACTIVE_STRUCTURE_CHECK_INTERVAL = 4;
+    private static final int ACTIVE_STRUCTURE_CHECK_INTERVAL = 0;
     private static final int IDLE_STRUCTURE_CHECK_INTERVAL = 20;
+    private static final int PROCESSING_FAILURE_RETRY_INTERVAL = 20;
 
     protected MultiblockPattern multiblockPattern;
 
@@ -50,6 +51,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     private ResourceLocation activeRecipeId;
     private int structureCheckCooldown;
+    private int processingFailureCooldown;
 
     public MachineBlockEntity(BlockEntityType<? extends MachineBlockEntity> type,
                               BlockPos pos,
@@ -74,6 +76,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 : null;
         recipeHandler = Optional.empty();
         structureCheckCooldown = 0;
+        processingFailureCooldown = 0;
     }
 
     @Override
@@ -103,15 +106,24 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
 
         if (blockEntity.isStructureValid) {
-            try {
-                blockEntity.setHatches(pos, level);
-                blockEntity.processRecipe(level, pos);
-            } catch (ClassCastException | NullPointerException exception) {
-                blockEntity.isStructureValid = false;
-                blockEntity.structureCheckCooldown = 0;
-                LOGGER.log(java.util.logging.Level.WARNING,
-                        "Machine structure changed while processing at " + pos,
-                        exception);
+            if (blockEntity.processingFailureCooldown > 0) {
+                blockEntity.processingFailureCooldown--;
+            } else {
+                try {
+                    blockEntity.setHatches(pos, level);
+                    blockEntity.processRecipe(level, pos);
+                } catch (ClassCastException | NullPointerException exception) {
+                    blockEntity.isStructureValid = false;
+                    blockEntity.structureCheckCooldown = 0;
+                    LOGGER.log(java.util.logging.Level.WARNING,
+                            "Machine structure changed while processing at " + pos,
+                            exception);
+                } catch (IllegalStateException exception) {
+                    blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
+                    LOGGER.log(java.util.logging.Level.WARNING,
+                            "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later",
+                            exception);
+                }
             }
         }
 
@@ -163,6 +175,14 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         restoreRecipeHandler(level, recipeType);
 
         if (recipeHandler.isEmpty()) {
+            BlockState controllerState = level.getBlockState(worldPosition);
+            if (!checkMultiblock(level, worldPosition, controllerState)) {
+                isStructureValid = false;
+                structureCheckCooldown = 0;
+                return;
+            }
+            isStructureValid = true;
+
             Stream<R> candidates = level.getRecipeManager()
                     .getAllRecipesFor(recipeType)
                     .stream()
@@ -174,6 +194,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 return;
             }
             startRecipe(nextRecipe.get());
+            structureCheckCooldown = ACTIVE_STRUCTURE_CHECK_INTERVAL;
         }
 
         if (recipeHandler.get().getType() != recipeType) {
@@ -237,6 +258,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
         energyConsumed = 0;
         ingredientsConsumed = false;
+        processingFailureCooldown = 0;
         setChanged();
     }
 
@@ -246,6 +268,8 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         recipeEnergyCost = 0;
         energyConsumed = 0;
         ingredientsConsumed = false;
+        processingFailureCooldown = 0;
+        structureCheckCooldown = 0;
         setChanged();
     }
 
