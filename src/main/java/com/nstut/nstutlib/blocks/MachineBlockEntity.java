@@ -19,8 +19,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fluids.capability.templates.FluidTank;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -121,12 +121,6 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 try {
                     blockEntity.setHatches(pos, level);
                     blockEntity.processRecipe(level, pos);
-                } catch (ClassCastException | NullPointerException exception) {
-                    blockEntity.isStructureValid = false;
-                    blockEntity.structureCheckCooldown = 0;
-                    LOGGER.log(java.util.logging.Level.WARNING,
-                            "Machine structure changed while processing at " + pos,
-                            exception);
                 } catch (RecipeTransactionCorruptedException exception) {
                     blockEntity.clearActiveRecipe();
                     blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
@@ -138,6 +132,12 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later",
+                            exception);
+                } catch (ClassCastException | NullPointerException | IllegalStateException exception) {
+                    blockEntity.isStructureValid = false;
+                    blockEntity.structureCheckCooldown = 0;
+                    LOGGER.log(java.util.logging.Level.WARNING,
+                            "Machine hatch/capability became unavailable while processing at " + pos,
                             exception);
                 }
             }
@@ -159,12 +159,17 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected abstract void processRecipe(Level level, BlockPos blockPos);
 
+    /**
+     * Processes a resumable recipe transaction. Before any mutation, transactional item handlers are
+     * required to implement IItemHandlerModifiable and transactional fluid handlers must be FluidTank
+     * instances/subclasses so rollback can restore exact state.
+     */
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandlerModifiable inputSlots,
-                                                                           List<FluidTank> inputTanks,
-                                                                           IItemHandlerModifiable outputSlots,
-                                                                           List<FluidTank> outputTanks,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick) {
         processRecipeTransaction(
@@ -181,13 +186,15 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandlerModifiable inputSlots,
-                                                                           List<FluidTank> inputTanks,
-                                                                           IItemHandlerModifiable outputSlots,
-                                                                           List<FluidTank> outputTanks,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
+        ModRecipe.requireRestorableStorage(inputSlots, inputTanks, "input");
+        ModRecipe.requireRestorableStorage(outputSlots, outputTanks, "output");
         restoreRecipeHandler(level, recipeType);
 
         if (recipeHandler.isEmpty()) {
