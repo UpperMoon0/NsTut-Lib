@@ -7,12 +7,11 @@ import com.nstut.nstutlib.recipes.RecipeTransactionException;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -22,10 +21,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -66,34 +66,32 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     }
 
     @Override
-    protected void loadAdditional(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        energyConsumed = Math.max(0, tag.getInt("energyConsumed"));
-        recipeEnergyCost = Math.max(0, tag.getInt("recipeEnergyCost"));
-        ingredientsConsumed = tag.getBoolean("ingredientsConsumed");
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        energyConsumed = Math.max(0, input.getIntOr("energyConsumed", 0));
+        recipeEnergyCost = Math.max(0, input.getIntOr("recipeEnergyCost", 0));
+        ingredientsConsumed = input.getBooleanOr("ingredientsConsumed", false);
         activeRecipeKey = null;
-        if (tag.contains("activeRecipeId")) {
-            Identifier id = Identifier.tryParse(tag.getString("activeRecipeId"));
-            if (id != null) activeRecipeKey = ResourceKey.create(Registries.RECIPE, id);
-        }
-        activeItemOutputIndexes = tag.contains("activeItemOutputIndexes") ? tag.getIntArray("activeItemOutputIndexes") : null;
+        Identifier id = Identifier.tryParse(input.getStringOr("activeRecipeId", ""));
+        if (id != null) activeRecipeKey = ResourceKey.create(Registries.RECIPE, id);
+        activeItemOutputIndexes = input.getIntArray("activeItemOutputIndexes").orElse(null);
         recipeHandler = Optional.empty();
         structureCheckCooldown = 0;
         processingFailureCooldown = 0;
     }
 
     @Override
-    protected void saveAdditional(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putInt("energyConsumed", Math.max(0, energyConsumed));
-        tag.putInt("recipeEnergyCost", Math.max(0, recipeEnergyCost));
-        tag.putBoolean("ingredientsConsumed", ingredientsConsumed);
-        if (activeRecipeKey != null) tag.putString("activeRecipeId", activeRecipeKey.identifier().toString());
-        if (activeItemOutputIndexes != null) tag.putIntArray("activeItemOutputIndexes", activeItemOutputIndexes);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt("energyConsumed", Math.max(0, energyConsumed));
+        output.putInt("recipeEnergyCost", Math.max(0, recipeEnergyCost));
+        output.putBoolean("ingredientsConsumed", ingredientsConsumed);
+        if (activeRecipeKey != null) output.putString("activeRecipeId", activeRecipeKey.identifier().toString());
+        if (activeItemOutputIndexes != null) output.putIntArray("activeItemOutputIndexes", activeItemOutputIndexes);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, MachineBlockEntity blockEntity) {
-        if (level.isClientSide) return;
+        if (level.isClientSide()) return;
 
         boolean previousStructureValid = blockEntity.isStructureValid;
         if (blockEntity.structureCheckCooldown <= 0) {
@@ -154,9 +152,11 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                                                                            IItemHandler outputSlots, List<? extends IFluidHandler> outputTanks,
                                                                            IEnergyStorage energyStorage, int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+
         ModRecipe.requireRestorableStorage(inputSlots, inputTanks, "input");
         ModRecipe.requireRestorableStorage(outputSlots, outputTanks, "output");
-        restoreRecipeHandler(level, recipeType);
+        restoreRecipeHandler(serverLevel, recipeType);
 
         if (recipeHandler.isEmpty()) {
             BlockState controllerState = level.getBlockState(worldPosition);
@@ -167,7 +167,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             }
             isStructureValid = true;
 
-            Stream<RecipeHolder<R>> candidates = level.getRecipeManager().getAllRecipesFor(recipeType).stream()
+            Stream<RecipeHolder<R>> candidates = recipesFor(serverLevel, recipeType)
                     .filter(holder -> holder.value().recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks));
             Optional<RecipeHolder<R>> nextRecipe = recipePreference == null
                     ? candidates.findFirst()
@@ -215,10 +215,17 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private <R extends ModRecipe<R>> void restoreRecipeHandler(Level level, RecipeType<R> expectedType) {
+    @SuppressWarnings("unchecked")
+    private static <R extends ModRecipe<R>> Stream<RecipeHolder<R>> recipesFor(ServerLevel level, RecipeType<R> recipeType) {
+        return level.recipeAccess().getRecipes().stream()
+                .filter(holder -> holder.value().getType() == recipeType)
+                .map(holder -> (RecipeHolder<R>) (RecipeHolder<?>) holder);
+    }
+
+    private <R extends ModRecipe<R>> void restoreRecipeHandler(ServerLevel level, RecipeType<R> expectedType) {
         if (recipeHandler.isPresent() || activeRecipeKey == null) return;
 
-        Optional<RecipeHolder<?>> restored = level.getRecipeManager().byKey(activeRecipeKey);
+        Optional<RecipeHolder<?>> restored = level.recipeAccess().byKey(activeRecipeKey);
         if (restored.isPresent() && restored.get().value() instanceof ModRecipe<?> modRecipe && modRecipe.getType() == expectedType) {
             recipeHandler = Optional.of(modRecipe);
             recipeEnergyCost = Math.max(0, modRecipe.getTotalEnergy());

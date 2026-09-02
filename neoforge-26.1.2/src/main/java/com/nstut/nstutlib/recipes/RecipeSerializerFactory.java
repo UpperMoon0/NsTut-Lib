@@ -69,10 +69,7 @@ public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> 
             }
         };
 
-        return new RecipeSerializer<>() {
-            @Override public @NotNull MapCodec<T> codec() { return codec; }
-            @Override public @NotNull StreamCodec<RegistryFriendlyByteBuf, T> streamCodec() { return streamCodec; }
-        };
+        return new RecipeSerializer<>(codec, streamCodec);
     }
 
     private static void validate(ModRecipeData data, String recipeId) {

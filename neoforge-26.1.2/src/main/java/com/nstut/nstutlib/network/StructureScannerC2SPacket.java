@@ -39,7 +39,7 @@ public record StructureScannerC2SPacket(int firstX, int firstY, int firstZ,
             tag.putInt("SecondCornerX", secondX); tag.putInt("SecondCornerY", secondY); tag.putInt("SecondCornerZ", secondZ);
         });
         player.getInventory().setChanged();
-        player.displayClientMessage(Component.literal("Structure corners updated"), true);
+        player.sendSystemMessage(Component.literal("Structure corners updated"));
     }
 
     private static ItemStack findScanner(ServerPlayer player) {

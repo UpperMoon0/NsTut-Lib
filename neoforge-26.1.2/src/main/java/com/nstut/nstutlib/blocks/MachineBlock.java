@@ -82,7 +82,7 @@ public class MachineBlock extends BaseEntityBlock {
                                                         @NotNull BlockPos pos,
                                                         @NotNull Player player,
                                                         @NotNull BlockHitResult hit) {
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (player instanceof ServerPlayer serverPlayer && blockEntity instanceof MenuProvider menuProvider) {
             serverPlayer.openMenu(menuProvider, pos);
@@ -95,7 +95,7 @@ public class MachineBlock extends BaseEntityBlock {
     public <U extends BlockEntity> BlockEntityTicker<U> getTicker(Level level,
                                                                   @NotNull BlockState state,
                                                                   @NotNull BlockEntityType<U> blockEntityType) {
-        if (level.isClientSide) return null;
+        if (level.isClientSide()) return null;
         return (tickLevel, pos, tickState, blockEntity) -> {
             if (blockEntity instanceof MachineBlockEntity machineBlockEntity) {
                 MachineBlockEntity.serverTick(tickLevel, pos, tickState, machineBlockEntity);

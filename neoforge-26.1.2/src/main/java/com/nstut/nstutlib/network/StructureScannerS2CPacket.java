@@ -6,6 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
@@ -27,7 +28,7 @@ public record StructureScannerS2CPacket(int firstX, int firstY, int firstZ,
     }
 
     public void handle(IPayloadContext context) {
-        if (FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             context.enqueueWork(() -> ClientPacketHandlers.openStructureScanner(
                     firstX, firstY, firstZ, secondX, secondY, secondZ));
         }

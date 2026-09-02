@@ -25,17 +25,17 @@ public class StructureScanner extends Item {
     @Override
     public @NotNull InteractionResult use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
         ItemStack scanner = player.getItemInHand(hand);
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
 
         HitResult hitResult = player.pick(5.0D, 0.0F, false);
         if (hitResult.getType() == HitResult.Type.BLOCK) {
             BlockHitResult blockHit = (BlockHitResult) hitResult;
             if (player.isShiftKeyDown()) {
                 setCorner(scanner, "SecondCorner", blockHit);
-                player.displayClientMessage(Component.literal("Second corner set to " + blockHit.getBlockPos().toShortString()), true);
+                player.sendSystemMessage(Component.literal("Second corner set to " + blockHit.getBlockPos().toShortString()));
             } else {
                 setCorner(scanner, "FirstCorner", blockHit);
-                player.displayClientMessage(Component.literal("First corner set to " + blockHit.getBlockPos().toShortString()), true);
+                player.sendSystemMessage(Component.literal("First corner set to " + blockHit.getBlockPos().toShortString()));
             }
             return InteractionResult.CONSUME;
         }
@@ -43,8 +43,8 @@ public class StructureScanner extends Item {
         if (player instanceof ServerPlayer serverPlayer) {
             CompoundTag tag = scanner.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             PacketRegistries.sendToPlayer(serverPlayer, new StructureScannerS2CPacket(
-                    tag.getInt("FirstCornerX"), tag.getInt("FirstCornerY"), tag.getInt("FirstCornerZ"),
-                    tag.getInt("SecondCornerX"), tag.getInt("SecondCornerY"), tag.getInt("SecondCornerZ")));
+                    tag.getIntOr("FirstCornerX", 0), tag.getIntOr("FirstCornerY", 0), tag.getIntOr("FirstCornerZ", 0),
+                    tag.getIntOr("SecondCornerX", 0), tag.getIntOr("SecondCornerY", 0), tag.getIntOr("SecondCornerZ", 0)));
         }
         return InteractionResult.CONSUME;
     }

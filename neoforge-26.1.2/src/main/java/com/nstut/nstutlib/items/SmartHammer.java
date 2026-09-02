@@ -39,7 +39,7 @@ public class SmartHammer extends Item {
 
     @Override
     public @NotNull InteractionResult use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
-        if (level.isClientSide || !player.isShiftKeyDown()) return InteractionResult.PASS;
+        if (level.isClientSide() || !player.isShiftKeyDown()) return InteractionResult.PASS;
 
         HitResult hitResult = player.pick(5.0D, 0.0F, false);
         if (hitResult.getType() != HitResult.Type.BLOCK) return InteractionResult.PASS;
@@ -147,11 +147,12 @@ public class SmartHammer extends Item {
         for (Placement placement : placements) required.merge(placement.requiredItem, 1, Integer::sum);
         for (Map.Entry<Item, Integer> entry : required.entrySet()) {
             int available = 0;
-            for (ItemStack stack : player.getInventory().items) {
+            for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
                 if (stack.is(entry.getKey())) available += stack.getCount();
             }
             if (available < entry.getValue()) {
-                notify(player, "Missing " + (entry.getValue() - available) + " × " + entry.getKey().getDescription().getString());
+                Component itemName = entry.getKey().getName(new ItemStack(entry.getKey()));
+                notify(player, "Missing " + (entry.getValue() - available) + " × " + itemName.getString());
                 return false;
             }
         }
@@ -159,7 +160,7 @@ public class SmartHammer extends Item {
     }
 
     private static boolean consumeOne(Player player, Item item) {
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (stack.is(item) && !stack.isEmpty()) {
                 stack.shrink(1);
                 return true;
@@ -194,7 +195,7 @@ public class SmartHammer extends Item {
     }
 
     private static void notify(Player player, String message) {
-        player.displayClientMessage(Component.literal(message), true);
+        player.sendSystemMessage(Component.literal(message));
     }
 
     private record Placement(BlockPos pos, BlockState state, Item requiredItem, boolean water) {}
