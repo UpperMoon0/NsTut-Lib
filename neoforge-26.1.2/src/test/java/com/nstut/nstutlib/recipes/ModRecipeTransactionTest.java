@@ -24,10 +24,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ModRecipeTransactionTest {
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        HolderLookup.Provider fullVanillaLookup = VanillaRegistries.createLookup();
-        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(fullVanillaLookup).forEach(pending -> pending.apply());
+        try {
+            SharedConstants.tryDetectVersion();
+            Bootstrap.bootStrap();
+            HolderLookup.Provider fullVanillaLookup = VanillaRegistries.createLookup();
+            BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(fullVanillaLookup).forEach(pending -> pending.apply());
+        } catch (RuntimeException exception) {
+            exception.printStackTrace(System.err);
+            throw exception;
+        }
     }
 
     @Test
