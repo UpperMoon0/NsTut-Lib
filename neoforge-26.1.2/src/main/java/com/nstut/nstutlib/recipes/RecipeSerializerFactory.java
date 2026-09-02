@@ -5,7 +5,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -15,8 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> {
-    private static final ResourceLocation CODEC_PLACEHOLDER_ID =
-            ResourceLocation.fromNamespaceAndPath("nstutlib", "codec_decoded_recipe");
+    private static final Identifier CODEC_PLACEHOLDER_ID =
+            Identifier.fromNamespaceAndPath("nstutlib", "codec_decoded_recipe");
 
     private static final MapCodec<IngredientItem> INGREDIENT_ITEM_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             ItemStack.CODEC.fieldOf("itemStack").forGetter(IngredientItem::getItemStack),
@@ -70,22 +70,13 @@ public class RecipeSerializerFactory<T extends ModRecipe<T> & RecipeFactory<T>> 
         };
 
         return new RecipeSerializer<>() {
-            @Override
-            public @NotNull MapCodec<T> codec() {
-                return codec;
-            }
-
-            @Override
-            public @NotNull StreamCodec<RegistryFriendlyByteBuf, T> streamCodec() {
-                return streamCodec;
-            }
+            @Override public @NotNull MapCodec<T> codec() { return codec; }
+            @Override public @NotNull StreamCodec<RegistryFriendlyByteBuf, T> streamCodec() { return streamCodec; }
         };
     }
 
     private static void validate(ModRecipeData data, String recipeId) {
-        if (data.getTotalEnergy() < 0) {
-            throw new IllegalArgumentException(recipeId + " has negative energy");
-        }
+        if (data.getTotalEnergy() < 0) throw new IllegalArgumentException(recipeId + " has negative energy");
         for (IngredientItem input : data.getIngredientItems()) {
             if (input == null || input.getItemStack().isEmpty() || input.getItemStack().getCount() <= 0) {
                 throw new IllegalArgumentException(recipeId + " has an invalid item input");

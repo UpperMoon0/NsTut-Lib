@@ -2,7 +2,7 @@ package com.nstut.nstutlib.recipes;
 
 import lombok.Getter;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
@@ -22,13 +22,13 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<RecipeInput>, RecipeFactory<T> {
-    protected final ResourceLocation id;
+    protected final Identifier id;
     @Getter
     protected final ModRecipeData recipe;
     private final RecipeSerializer<T> serializer;
     private final RecipeType<T> type;
 
-    protected ModRecipe(ResourceLocation id, ModRecipeData recipe, RecipeSerializer<T> serializer, RecipeType<T> type) {
+    protected ModRecipe(Identifier id, ModRecipeData recipe, RecipeSerializer<T> serializer, RecipeType<T> type) {
         this.id = id;
         this.recipe = recipe;
         this.serializer = serializer;
@@ -36,12 +36,12 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
     }
 
     @Override
-    public T create(ResourceLocation id, ModRecipeData recipeData) {
+    public T create(Identifier id, ModRecipeData recipeData) {
         if (recipeData == null) throw new IllegalArgumentException("Recipe data cannot be null");
         return createInstance(id, recipeData);
     }
 
-    protected abstract T createInstance(ResourceLocation id, ModRecipeData recipeContainer);
+    protected abstract T createInstance(Identifier id, ModRecipeData recipeContainer);
 
     @Override
     public @NotNull RecipeSerializer<T> getSerializer() {
@@ -53,29 +53,15 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         return type;
     }
 
-    /**
-     * Compatibility/debug identifier. On 1.21+ authoritative recipe identity lives on RecipeHolder;
-     * machine transactions persist that holder id rather than relying on this field.
-     */
-    public @NotNull ResourceLocation getId() {
+    /** Compatibility/debug identifier; authoritative identity lives on RecipeHolder. */
+    public @NotNull Identifier getId() {
         return id;
     }
 
-    public List<IngredientItem> getItemIngredients() {
-        return List.of(recipe.getIngredientItems());
-    }
-
-    public List<FluidStack> getFluidIngredients() {
-        return List.of(recipe.getFluidIngredients());
-    }
-
-    public List<OutputItem> getItemOutputs() {
-        return List.of(recipe.getOutputItems());
-    }
-
-    public List<FluidStack> getFluidOutputs() {
-        return List.of(recipe.getFluidOutputs());
-    }
+    public List<IngredientItem> getItemIngredients() { return List.of(recipe.getIngredientItems()); }
+    public List<FluidStack> getFluidIngredients() { return List.of(recipe.getFluidIngredients()); }
+    public List<OutputItem> getItemOutputs() { return List.of(recipe.getOutputItems()); }
+    public List<FluidStack> getFluidOutputs() { return List.of(recipe.getFluidOutputs()); }
 
     public boolean recipeMatch(IItemHandler inputSlots,
                                List<? extends IFluidHandler> inputTanks,
@@ -88,7 +74,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         IngredientItem[] ingredients = recipe.getIngredientItems();
         if (ingredients.length == 0) return true;
         if (inputSlots == null) return false;
-
         for (ItemStack required : aggregateRequiredItemStacks()) {
             int remaining = required.getCount();
             for (int slot = 0; slot < inputSlots.getSlots() && remaining > 0; slot++) {
@@ -115,7 +100,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         FluidStack[] ingredients = recipe.getFluidIngredients();
         if (ingredients.length == 0) return true;
         if (inputTanks == null || inputTanks.isEmpty()) return false;
-
         for (FluidStack required : aggregateRequiredFluidStacks()) {
             int remaining = required.getAmount();
             for (IFluidHandler handler : inputTanks) {
@@ -181,11 +165,9 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         OutputItem[] outputs = recipe.getOutputItems();
         if (outputs.length == 0) return true;
         if (outputSlots == null) return false;
-
         boolean[] selected = selectionMask(outputs.length, selectedItemOutputIndexes);
         ItemStack[] virtualSlots = new ItemStack[outputSlots.getSlots()];
         for (int slot = 0; slot < outputSlots.getSlots(); slot++) virtualSlots[slot] = outputSlots.getStackInSlot(slot).copy();
-
         for (int outputIndex = 0; outputIndex < outputs.length; outputIndex++) {
             if (!selected[outputIndex]) continue;
             ItemStack remaining = outputs[outputIndex].getItemStack().copy();
@@ -217,14 +199,12 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         FluidStack[] outputs = recipe.getFluidOutputs();
         if (outputs.length == 0) return true;
         if (outputTanks == null || outputTanks.isEmpty()) return false;
-
         List<VirtualFluidTank> virtualTanks = new ArrayList<>();
         for (IFluidHandler handler : outputTanks) {
             for (int tank = 0; tank < handler.getTanks(); tank++) {
                 virtualTanks.add(new VirtualFluidTank(handler, tank, handler.getTankCapacity(tank), handler.getFluidInTank(tank).copy()));
             }
         }
-
         for (FluidStack output : outputs) {
             FluidStack remaining = output.copy();
             for (VirtualFluidTank tank : virtualTanks) {
@@ -302,7 +282,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
                 if (!remaining.isEmpty()) throw new RecipeTransactionException("Output inventory changed during recipe commit: " + id);
             }
         }
-
         for (FluidStack output : recipe.getFluidOutputs()) {
             FluidStack remaining = output.copy();
             for (IFluidHandler handler : safeFluidHandlers(outputTanks)) {
@@ -323,7 +302,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
     public boolean tryConsumeIngredients(IItemHandler inputSlots, List<? extends IFluidHandler> inputTanks) {
         requireRestorableStorage(inputSlots, inputTanks, "input");
         if (!hasRequiredItems(inputSlots) || !hasRequiredFluids(inputTanks)) return false;
-
         MutableStateSnapshot snapshot = MutableStateSnapshot.capture(inputSlots, inputTanks);
         try {
             consumeIngredientsUnchecked(inputSlots, inputTanks);
@@ -352,7 +330,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
             }
             if (remaining > 0) throw new RecipeTransactionException("Item input handler changed during recipe commit: " + id);
         }
-
         for (FluidStack ingredient : recipe.getFluidIngredients()) {
             int remaining = ingredient.getAmount();
             for (IFluidHandler handler : safeFluidHandlers(inputTanks)) {
@@ -396,29 +373,12 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         return !first.isEmpty() && !second.isEmpty() && FluidStack.isSameFluidSameComponents(first, second);
     }
 
-    public int getTotalEnergy() {
-        return recipe.getTotalEnergy();
-    }
+    public int getTotalEnergy() { return recipe.getTotalEnergy(); }
 
-    @Override
-    public boolean matches(@NotNull RecipeInput input, @NotNull Level level) {
-        return false;
-    }
-
-    @Override
-    public @NotNull ItemStack assemble(@NotNull RecipeInput input, @NotNull HolderLookup.Provider registries) {
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    public @NotNull ItemStack getResultItem(@NotNull HolderLookup.Provider registries) {
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return true;
-    }
+    @Override public boolean matches(@NotNull RecipeInput input, @NotNull Level level) { return false; }
+    @Override public @NotNull ItemStack assemble(@NotNull RecipeInput input, @NotNull HolderLookup.Provider registries) { return ItemStack.EMPTY; }
+    @Override public @NotNull ItemStack getResultItem(@NotNull HolderLookup.Provider registries) { return ItemStack.EMPTY; }
+    @Override public boolean canCraftInDimensions(int width, int height) { return true; }
 
     private static final class MutableStateSnapshot {
         private final IItemHandlerModifiable items;
@@ -438,7 +398,6 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
                 itemStacks = new ItemStack[mutableItems.getSlots()];
                 for (int slot = 0; slot < mutableItems.getSlots(); slot++) itemStacks[slot] = mutableItems.getStackInSlot(slot).copy();
             }
-
             List<FluidState> fluids = new ArrayList<>();
             for (IFluidHandler handler : safeFluidHandlers(fluidHandlers)) {
                 FluidTank tank = (FluidTank) handler;
@@ -447,7 +406,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
             return new MutableStateSnapshot(mutableItems, itemStacks, fluids);
         }
 
-        private void rollbackOrThrow(RuntimeException originalFailure, ResourceLocation recipeId, String phase) {
+        private void rollbackOrThrow(RuntimeException originalFailure, Identifier recipeId, String phase) {
             RuntimeException rollbackFailure = null;
             if (items != null) {
                 for (int slot = 0; slot < itemStacks.length; slot++) {
@@ -476,8 +435,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Recipe
         }
     }
 
-    private record FluidState(FluidTank tank, FluidStack stack) {
-    }
+    private record FluidState(FluidTank tank, FluidStack stack) {}
 
     private static final class VirtualFluidTank {
         private final IFluidHandler handler;

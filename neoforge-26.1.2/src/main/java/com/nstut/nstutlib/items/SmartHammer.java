@@ -8,7 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -38,27 +38,18 @@ public class SmartHammer extends Item {
     }
 
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
-        ItemStack hammer = player.getItemInHand(hand);
-        if (level.isClientSide || !player.isShiftKeyDown()) {
-            return InteractionResultHolder.pass(hammer);
-        }
+    public @NotNull InteractionResult use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
+        if (level.isClientSide || !player.isShiftKeyDown()) return InteractionResult.PASS;
 
         HitResult hitResult = player.pick(5.0D, 0.0F, false);
-        if (hitResult.getType() != HitResult.Type.BLOCK) {
-            return InteractionResultHolder.pass(hammer);
-        }
+        if (hitResult.getType() != HitResult.Type.BLOCK) return InteractionResult.PASS;
 
         BlockPos controllerPos = ((BlockHitResult) hitResult).getBlockPos();
         BlockState controllerState = level.getBlockState(controllerPos);
-        if (!(controllerState.getBlock() instanceof MachineBlock)) {
-            return InteractionResultHolder.pass(hammer);
-        }
+        if (!(controllerState.getBlock() instanceof MachineBlock)) return InteractionResult.PASS;
 
         BlockEntity blockEntity = level.getBlockEntity(controllerPos);
-        if (!(blockEntity instanceof MachineBlockEntity machineBlockEntity)) {
-            return InteractionResultHolder.pass(hammer);
-        }
+        if (!(blockEntity instanceof MachineBlockEntity machineBlockEntity)) return InteractionResult.PASS;
 
         boolean built = buildStructure(
                 level,
@@ -70,9 +61,9 @@ public class SmartHammer extends Item {
                 machineBlockEntity.getSouthOffsetZ());
         if (built) {
             machineBlockEntity.requestStructureValidation();
-            return InteractionResultHolder.consume(hammer);
+            return InteractionResult.CONSUME;
         }
-        return InteractionResultHolder.fail(hammer);
+        return InteractionResult.FAIL;
     }
 
     private boolean buildStructure(Level level,
@@ -91,9 +82,7 @@ public class SmartHammer extends Item {
             for (int z = 0; z < blocks[y].length; z++) {
                 for (int x = 0; x < blocks[y][z].length; x++) {
                     MultiblockBlock expected = blocks[y][z][x];
-                    if (expected == null) {
-                        continue;
-                    }
+                    if (expected == null) continue;
                     if (placements.size() >= MAX_BUILD_BLOCKS) {
                         notify(player, "Structure is too large for the Smart Hammer");
                         return false;
@@ -110,16 +99,12 @@ public class SmartHammer extends Item {
                             y,
                             z,
                             controllerState);
-                    if (target.equals(controllerPos)) {
-                        continue;
-                    }
+                    if (target.equals(controllerPos)) continue;
 
                     Map<String, String> states = rotateFacing(expected.getStates(), controllerFacing);
                     BlockState desired = applyBlockStates(expected.getBlock().defaultBlockState(), states);
                     BlockState current = level.getBlockState(target);
-                    if (current.equals(desired)) {
-                        continue;
-                    }
+                    if (current.equals(desired)) continue;
                     if (!current.canBeReplaced()) {
                         notify(player, "Cannot replace " + current.getBlock().getName().getString() + " at " + target.toShortString());
                         return false;
@@ -135,49 +120,35 @@ public class SmartHammer extends Item {
             }
         }
 
-        if (!player.isCreative() && !hasRequiredItems(player, placements)) {
-            return false;
-        }
+        if (!player.isCreative() && !hasRequiredItems(player, placements)) return false;
 
         for (Placement placement : placements) {
-            if (!player.isCreative()) {
-                if (!consumeOne(player, placement.requiredItem)) {
-                    notify(player, "Inventory changed while building; stopped safely");
-                    return false;
-                }
+            if (!player.isCreative() && !consumeOne(player, placement.requiredItem)) {
+                notify(player, "Inventory changed while building; stopped safely");
+                return false;
             }
             level.setBlock(placement.pos, placement.state, 3);
             if (!player.isCreative() && placement.water) {
                 ItemStack bucket = new ItemStack(Items.BUCKET);
-                if (!player.getInventory().add(bucket)) {
-                    player.drop(bucket, false);
-                }
+                if (!player.getInventory().add(bucket)) player.drop(bucket, false);
             }
         }
         return true;
     }
 
     private static Item requiredItem(Block block) {
-        if (block == Blocks.FARMLAND) {
-            return Items.DIRT;
-        }
-        if (block == Blocks.WATER) {
-            return Items.WATER_BUCKET;
-        }
+        if (block == Blocks.FARMLAND) return Items.DIRT;
+        if (block == Blocks.WATER) return Items.WATER_BUCKET;
         return block.asItem();
     }
 
     private static boolean hasRequiredItems(Player player, List<Placement> placements) {
         Map<Item, Integer> required = new HashMap<>();
-        for (Placement placement : placements) {
-            required.merge(placement.requiredItem, 1, Integer::sum);
-        }
+        for (Placement placement : placements) required.merge(placement.requiredItem, 1, Integer::sum);
         for (Map.Entry<Item, Integer> entry : required.entrySet()) {
             int available = 0;
             for (ItemStack stack : player.getInventory().items) {
-                if (stack.is(entry.getKey())) {
-                    available += stack.getCount();
-                }
+                if (stack.is(entry.getKey())) available += stack.getCount();
             }
             if (available < entry.getValue()) {
                 notify(player, "Missing " + (entry.getValue() - available) + " × " + entry.getKey().getDescription().getString());
@@ -198,32 +169,22 @@ public class SmartHammer extends Item {
     }
 
     private static Map<String, String> rotateFacing(Map<String, String> states, Direction controllerFacing) {
-        if (states == null || !states.containsKey("facing")) {
-            return states;
-        }
+        if (states == null || !states.containsKey("facing")) return states;
         Direction authored = Direction.byName(states.get("facing"));
-        if (authored == null || !authored.getAxis().isHorizontal()) {
-            return states;
-        }
+        if (authored == null || !authored.getAxis().isHorizontal()) return states;
         Map<String, String> rotated = new HashMap<>(states);
         rotated.put("facing", MultiblockPattern.rotateHorizontalDirection(controllerFacing, authored).getName());
         return rotated;
     }
 
     private static BlockState applyBlockStates(BlockState state, Map<String, String> states) {
-        if (states == null) {
-            return state;
-        }
+        if (states == null) return state;
         BlockState result = state;
         StateDefinition<Block, BlockState> definition = state.getBlock().getStateDefinition();
         for (Map.Entry<String, String> entry : states.entrySet()) {
-            if ("operating".equals(entry.getKey())) {
-                continue;
-            }
+            if ("operating".equals(entry.getKey())) continue;
             Property<?> property = definition.getProperty(entry.getKey());
-            if (property != null) {
-                result = applyState(result, property, entry.getValue());
-            }
+            if (property != null) result = applyState(result, property, entry.getValue());
         }
         return result;
     }
@@ -236,6 +197,5 @@ public class SmartHammer extends Item {
         player.displayClientMessage(Component.literal(message), true);
     }
 
-    private record Placement(BlockPos pos, BlockState state, Item requiredItem, boolean water) {
-    }
+    private record Placement(BlockPos pos, BlockState state, Item requiredItem, boolean water) {}
 }

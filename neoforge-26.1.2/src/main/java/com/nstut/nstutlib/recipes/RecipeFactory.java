@@ -1,7 +1,7 @@
 package com.nstut.nstutlib.recipes;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public interface RecipeFactory<T extends ModRecipe<?>> {
-    T create(ResourceLocation id, ModRecipeData recipeData);
+    T create(Identifier id, ModRecipeData recipeData);
 }

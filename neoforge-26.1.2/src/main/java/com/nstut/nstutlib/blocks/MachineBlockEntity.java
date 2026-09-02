@@ -9,16 +9,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -49,7 +52,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected Optional<? extends ModRecipe<?>> recipeHandler = Optional.empty();
     protected boolean ingredientsConsumed;
 
-    private ResourceLocation activeRecipeId;
+    private ResourceKey<Recipe<?>> activeRecipeKey;
     private int[] activeItemOutputIndexes;
     private int structureCheckCooldown;
     private int processingFailureCooldown;
@@ -68,7 +71,11 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         energyConsumed = Math.max(0, tag.getInt("energyConsumed"));
         recipeEnergyCost = Math.max(0, tag.getInt("recipeEnergyCost"));
         ingredientsConsumed = tag.getBoolean("ingredientsConsumed");
-        activeRecipeId = tag.contains("activeRecipeId") ? ResourceLocation.tryParse(tag.getString("activeRecipeId")) : null;
+        activeRecipeKey = null;
+        if (tag.contains("activeRecipeId")) {
+            Identifier id = Identifier.tryParse(tag.getString("activeRecipeId"));
+            if (id != null) activeRecipeKey = ResourceKey.create(Registries.RECIPE, id);
+        }
         activeItemOutputIndexes = tag.contains("activeItemOutputIndexes") ? tag.getIntArray("activeItemOutputIndexes") : null;
         recipeHandler = Optional.empty();
         structureCheckCooldown = 0;
@@ -81,7 +88,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         tag.putInt("energyConsumed", Math.max(0, energyConsumed));
         tag.putInt("recipeEnergyCost", Math.max(0, recipeEnergyCost));
         tag.putBoolean("ingredientsConsumed", ingredientsConsumed);
-        if (activeRecipeId != null) tag.putString("activeRecipeId", activeRecipeId.toString());
+        if (activeRecipeKey != null) tag.putString("activeRecipeId", activeRecipeKey.identifier().toString());
         if (activeItemOutputIndexes != null) tag.putIntArray("activeItemOutputIndexes", activeItemOutputIndexes);
     }
 
@@ -130,7 +137,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     }
 
     private boolean hasActiveRecipe() {
-        return recipeHandler.isPresent() || activeRecipeId != null;
+        return recipeHandler.isPresent() || activeRecipeKey != null;
     }
 
     protected abstract void processRecipe(Level level, BlockPos blockPos);
@@ -209,16 +216,16 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     }
 
     private <R extends ModRecipe<R>> void restoreRecipeHandler(Level level, RecipeType<R> expectedType) {
-        if (recipeHandler.isPresent() || activeRecipeId == null) return;
+        if (recipeHandler.isPresent() || activeRecipeKey == null) return;
 
-        Optional<RecipeHolder<?>> restored = level.getRecipeManager().byKey(activeRecipeId);
+        Optional<RecipeHolder<?>> restored = level.getRecipeManager().byKey(activeRecipeKey);
         if (restored.isPresent() && restored.get().value() instanceof ModRecipe<?> modRecipe && modRecipe.getType() == expectedType) {
             recipeHandler = Optional.of(modRecipe);
             recipeEnergyCost = Math.max(0, modRecipe.getTotalEnergy());
             energyConsumed = Math.min(energyConsumed, recipeEnergyCost);
             ensureOutputRolls(modRecipe);
         } else {
-            LOGGER.warning("Unable to restore active recipe " + activeRecipeId + " at " + worldPosition);
+            LOGGER.warning("Unable to restore active recipe " + activeRecipeKey.identifier() + " at " + worldPosition);
             clearActiveRecipe();
         }
     }
@@ -230,9 +237,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private void startRecipe(ResourceLocation recipeId, ModRecipe<?> recipe) {
+    private void startRecipe(ResourceKey<Recipe<?>> recipeKey, ModRecipe<?> recipe) {
         recipeHandler = Optional.of(recipe);
-        activeRecipeId = recipeId;
+        activeRecipeKey = recipeKey;
         activeItemOutputIndexes = recipe.rollItemOutputIndexes();
         recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
         energyConsumed = 0;
@@ -243,7 +250,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected final void clearActiveRecipe() {
         recipeHandler = Optional.empty();
-        activeRecipeId = null;
+        activeRecipeKey = null;
         activeItemOutputIndexes = null;
         recipeEnergyCost = 0;
         energyConsumed = 0;
@@ -264,7 +271,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected abstract void setHatches(BlockPos blockPos, Level level);
 
-    protected DirectionProperty getFacingProperty() {
+    protected EnumProperty<Direction> getFacingProperty() {
         return MachineBlock.FACING;
     }
 

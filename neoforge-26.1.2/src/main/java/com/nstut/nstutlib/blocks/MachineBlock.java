@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -33,7 +33,7 @@ import java.util.function.BiFunction;
 
 public class MachineBlock extends BaseEntityBlock {
     public static final BooleanProperty OPERATING = BooleanProperty.create("operating");
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private final BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory;
@@ -48,7 +48,6 @@ public class MachineBlock extends BaseEntityBlock {
 
     @Override
     protected MapCodec<? extends BaseEntityBlock> codec() {
-        // The machine factory is supplied by the owning mod's registry and is not data-driven.
         return MapCodec.unit(this);
     }
 
@@ -83,10 +82,7 @@ public class MachineBlock extends BaseEntityBlock {
                                                         @NotNull BlockPos pos,
                                                         @NotNull Player player,
                                                         @NotNull BlockHitResult hit) {
-        if (level.isClientSide) {
-            return InteractionResult.SUCCESS;
-        }
-
+        if (level.isClientSide) return InteractionResult.SUCCESS;
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (player instanceof ServerPlayer serverPlayer && blockEntity instanceof MenuProvider menuProvider) {
             serverPlayer.openMenu(menuProvider, pos);
@@ -99,9 +95,7 @@ public class MachineBlock extends BaseEntityBlock {
     public <U extends BlockEntity> BlockEntityTicker<U> getTicker(Level level,
                                                                   @NotNull BlockState state,
                                                                   @NotNull BlockEntityType<U> blockEntityType) {
-        if (level.isClientSide) {
-            return null;
-        }
+        if (level.isClientSide) return null;
         return (tickLevel, pos, tickState, blockEntity) -> {
             if (blockEntity instanceof MachineBlockEntity machineBlockEntity) {
                 MachineBlockEntity.serverTick(tickLevel, pos, tickState, machineBlockEntity);

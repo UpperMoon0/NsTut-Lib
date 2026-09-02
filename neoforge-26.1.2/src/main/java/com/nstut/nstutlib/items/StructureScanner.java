@@ -7,7 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -23,11 +23,9 @@ public class StructureScanner extends Item {
     }
 
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
+    public @NotNull InteractionResult use(Level level, @NotNull Player player, @NotNull InteractionHand hand) {
         ItemStack scanner = player.getItemInHand(hand);
-        if (level.isClientSide) {
-            return InteractionResultHolder.sidedSuccess(scanner, true);
-        }
+        if (level.isClientSide) return InteractionResult.SUCCESS;
 
         HitResult hitResult = player.pick(5.0D, 0.0F, false);
         if (hitResult.getType() == HitResult.Type.BLOCK) {
@@ -39,20 +37,16 @@ public class StructureScanner extends Item {
                 setCorner(scanner, "FirstCorner", blockHit);
                 player.displayClientMessage(Component.literal("First corner set to " + blockHit.getBlockPos().toShortString()), true);
             }
-            return InteractionResultHolder.consume(scanner);
+            return InteractionResult.CONSUME;
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
             CompoundTag tag = scanner.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             PacketRegistries.sendToPlayer(serverPlayer, new StructureScannerS2CPacket(
-                    tag.getInt("FirstCornerX"),
-                    tag.getInt("FirstCornerY"),
-                    tag.getInt("FirstCornerZ"),
-                    tag.getInt("SecondCornerX"),
-                    tag.getInt("SecondCornerY"),
-                    tag.getInt("SecondCornerZ")));
+                    tag.getInt("FirstCornerX"), tag.getInt("FirstCornerY"), tag.getInt("FirstCornerZ"),
+                    tag.getInt("SecondCornerX"), tag.getInt("SecondCornerY"), tag.getInt("SecondCornerZ")));
         }
-        return InteractionResultHolder.consume(scanner);
+        return InteractionResult.CONSUME;
     }
 
     private static void setCorner(ItemStack scanner, String prefix, BlockHitResult hit) {

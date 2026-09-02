@@ -2,20 +2,20 @@ package com.nstut.nstutlib.views;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
 import com.nstut.nstutlib.network.StructureScannerC2SPacket;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -44,7 +44,7 @@ public class StructureScannerScreen extends Screen {
     private static final long MAX_EXPORT_BLOCKS = 32_768L;
     private static final String SYMBOLS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_{|}~";
     private static final Logger LOGGER = Logger.getLogger(StructureScannerScreen.class.getName());
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(NsTutLib.MOD_ID, "textures/gui/structure_scanner.png");
 
     private final Level level;
     private final int initialFirstX, initialFirstY, initialFirstZ;
@@ -180,7 +180,7 @@ public class StructureScannerScreen extends Screen {
         Map<String, String> formattedMapping = new LinkedHashMap<>();
         for (Map.Entry<MultiblockBlock, Character> entry : symbols.entrySet()) {
             MultiblockBlock block = entry.getKey();
-            ResourceLocation id = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(block.getBlock()));
+            Identifier id = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(block.getBlock()));
             String blockState = id.toString();
             if (!block.getStates().isEmpty()) {
                 blockState += "[" + block.getStates().entrySet().stream()
@@ -209,10 +209,10 @@ public class StructureScannerScreen extends Screen {
             writer.write("@Override\npublic MultiblockPattern getMultiblockPattern() {\n");
             for (Map.Entry<MultiblockBlock, String> entry : variables.entrySet()) {
                 MultiblockBlock block = entry.getKey();
-                ResourceLocation id = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(block.getBlock()));
+                Identifier id = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(block.getBlock()));
                 writer.write("    MultiblockBlock " + entry.getValue() + " = new MultiblockBlock(");
                 writer.write("java.util.Objects.requireNonNull(net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(");
-                writer.write("net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(\"" + id.getNamespace() + "\", \"" + id.getPath() + "\"))), ");
+                writer.write("net.minecraft.resources.Identifier.fromNamespaceAndPath(\"" + id.getNamespace() + "\", \"" + id.getPath() + "\"))), ");
                 writer.write(formatStateMap(block.getStates()));
                 writer.write(");\n");
             }
@@ -254,12 +254,12 @@ public class StructureScannerScreen extends Screen {
     }
 
     @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        renderBackground(graphics, mouseX, mouseY, partialTicks);
-        RenderSystem.setShaderTexture(0, TEXTURE);
+    public void extractRenderState(@NotNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int screenHeight = 166;
         int screenWidth = 176;
-        graphics.blit(TEXTURE, (width - screenWidth) / 2, (height - screenHeight) / 2, 0, 0, screenWidth, screenHeight);
-        super.render(graphics, mouseX, mouseY, partialTicks);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE,
+                (width - screenWidth) / 2, (height - screenHeight) / 2,
+                0.0f, 0.0f, screenWidth, screenHeight, screenWidth, screenHeight);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 }
