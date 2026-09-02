@@ -2,6 +2,7 @@ package com.nstut.nstutlib.blocks;
 
 import com.nstut.nstutlib.models.MultiblockPattern;
 import com.nstut.nstutlib.recipes.ModRecipe;
+import com.nstut.nstutlib.recipes.RecipeTransactionCorruptedException;
 import com.nstut.nstutlib.recipes.RecipeTransactionException;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
@@ -18,8 +19,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.items.IItemHandlerModifiable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,6 +52,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected boolean ingredientsConsumed;
 
     private ResourceLocation activeRecipeId;
+    private int[] activeItemOutputIndexes;
     private int structureCheckCooldown;
     private int processingFailureCooldown;
 
@@ -75,6 +77,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         activeRecipeId = tag.contains("activeRecipeId")
                 ? ResourceLocation.tryParse(tag.getString("activeRecipeId"))
                 : null;
+        activeItemOutputIndexes = tag.contains("activeItemOutputIndexes")
+                ? tag.getIntArray("activeItemOutputIndexes")
+                : null;
         recipeHandler = Optional.empty();
         structureCheckCooldown = 0;
         processingFailureCooldown = 0;
@@ -88,6 +93,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         tag.putBoolean("ingredientsConsumed", ingredientsConsumed);
         if (activeRecipeId != null) {
             tag.putString("activeRecipeId", activeRecipeId.toString());
+        }
+        if (activeItemOutputIndexes != null) {
+            tag.putIntArray("activeItemOutputIndexes", activeItemOutputIndexes);
         }
     }
 
@@ -119,6 +127,13 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine structure changed while processing at " + pos,
                             exception);
+                } catch (RecipeTransactionCorruptedException exception) {
+                    blockEntity.clearActiveRecipe();
+                    blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
+                    LOGGER.log(java.util.logging.Level.SEVERE,
+                            "Machine transaction rollback failed at " + pos
+                                    + "; active recipe was cancelled to prevent duplicate output or repeated consumption",
+                            exception);
                 } catch (RecipeTransactionException exception) {
                     blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
                     LOGGER.log(java.util.logging.Level.WARNING,
@@ -146,10 +161,10 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandler inputSlots,
-                                                                           List<IFluidHandler> inputTanks,
-                                                                           IItemHandler outputSlots,
-                                                                           List<IFluidHandler> outputTanks,
+                                                                           IItemHandlerModifiable inputSlots,
+                                                                           List<FluidTank> inputTanks,
+                                                                           IItemHandlerModifiable outputSlots,
+                                                                           List<FluidTank> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick) {
         processRecipeTransaction(
@@ -166,10 +181,10 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
                                                                            RecipeType<R> recipeType,
-                                                                           IItemHandler inputSlots,
-                                                                           List<IFluidHandler> inputTanks,
-                                                                           IItemHandler outputSlots,
-                                                                           List<IFluidHandler> outputTanks,
+                                                                           IItemHandlerModifiable inputSlots,
+                                                                           List<FluidTank> inputTanks,
+                                                                           IItemHandlerModifiable outputSlots,
+                                                                           List<FluidTank> outputTanks,
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
@@ -206,6 +221,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         @SuppressWarnings("unchecked")
         R activeRecipe = (R) recipeHandler.get();
         recipeEnergyCost = Math.max(0, activeRecipe.getTotalEnergy());
+        ensureOutputRolls(activeRecipe);
 
         if (!ingredientsConsumed) {
             if (!activeRecipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks)
@@ -229,8 +245,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             }
         }
 
-        if (energyConsumed >= recipeEnergyCost && activeRecipe.canFitOutputs(outputSlots, outputTanks)) {
-            activeRecipe.assemble(outputSlots, outputTanks);
+        if (energyConsumed >= recipeEnergyCost
+                && activeRecipe.canFitOutputs(outputSlots, outputTanks, activeItemOutputIndexes)) {
+            activeRecipe.assemble(outputSlots, outputTanks, activeItemOutputIndexes);
             clearActiveRecipe();
         }
     }
@@ -247,15 +264,24 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             recipeHandler = Optional.of(modRecipe);
             recipeEnergyCost = Math.max(0, modRecipe.getTotalEnergy());
             energyConsumed = Math.min(energyConsumed, recipeEnergyCost);
+            ensureOutputRolls(modRecipe);
         } else {
             LOGGER.warning("Unable to restore active recipe " + activeRecipeId + " at " + worldPosition);
             clearActiveRecipe();
         }
     }
 
+    private void ensureOutputRolls(ModRecipe<?> recipe) {
+        if (activeItemOutputIndexes == null || !recipe.areRolledItemOutputIndexesValid(activeItemOutputIndexes)) {
+            activeItemOutputIndexes = recipe.rollItemOutputIndexes();
+            setChanged();
+        }
+    }
+
     private void startRecipe(ModRecipe<?> recipe) {
         recipeHandler = Optional.of(recipe);
         activeRecipeId = recipe.getId();
+        activeItemOutputIndexes = recipe.rollItemOutputIndexes();
         recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
         energyConsumed = 0;
         ingredientsConsumed = false;
@@ -266,6 +292,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected final void clearActiveRecipe() {
         recipeHandler = Optional.empty();
         activeRecipeId = null;
+        activeItemOutputIndexes = null;
         recipeEnergyCost = 0;
         energyConsumed = 0;
         ingredientsConsumed = false;
