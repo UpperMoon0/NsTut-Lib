@@ -70,6 +70,21 @@ class ModRecipeTransactionTest {
         assertEquals(1, handler.getStackInSlot(1).getCount());
     }
 
+    @Test
+    void rolledBackOutputCanBeRetriedSafely() {
+        ItemStack output = new ItemStack(Items.DIAMOND, 65);
+        TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[] {new OutputItem(output, 1.0f)}, new FluidStack[0], new FluidStack[0]);
+        OneShotDivergingOutputHandler handler = new OneShotDivergingOutputHandler();
+
+        assertThrows(IllegalStateException.class, () -> recipe.assemble(handler, List.of()));
+        assertTrue(handler.getStackInSlot(0).isEmpty());
+        assertTrue(handler.getStackInSlot(1).isEmpty());
+
+        recipe.assemble(handler, List.of());
+        assertEquals(64, handler.getStackInSlot(0).getCount());
+        assertEquals(1, handler.getStackInSlot(1).getCount());
+    }
+
     private static TestRecipe recipe(IngredientItem[] inputs,
                                      OutputItem[] outputs,
                                      FluidStack[] fluidInputs,
@@ -87,6 +102,23 @@ class ModRecipeTransactionTest {
         @Override
         protected TestRecipe createInstance(ResourceLocation id, ModRecipeData recipeContainer) {
             return new TestRecipe(id, recipeContainer);
+        }
+    }
+
+    private static final class OneShotDivergingOutputHandler extends ItemStackHandler {
+        private boolean diverged;
+
+        private OneShotDivergingOutputHandler() {
+            super(2);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (!simulate && slot == 1 && !diverged) {
+                diverged = true;
+                return stack;
+            }
+            return super.insertItem(slot, stack, simulate);
         }
     }
 

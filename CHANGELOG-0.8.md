@@ -9,6 +9,8 @@
 - Validate recipe JSON/network payloads and reject incompatible network protocol versions.
 - Validate multiblock block states and support rectangular pattern rotation.
 - Reduce multiblock validation churn and controller block-state writes.
+- Validate active machines every tick and revalidate immediately before recipe start, preventing stale-validity consumption after structure breaks.
+- Preserve rolled-back active recipes after transactional capability divergence and retry with bounded backoff instead of failing the server tick.
 - Replace reflective machine construction with typed factories.
 - Make Smart Hammer dedicated-server safe, deterministic to its invoking player, resource-preflighted, and non-destructive.
 - Make Structure Scanner sync player-targeted, volume-bounded, cross-platform, and generate valid pattern output.
