@@ -268,14 +268,14 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
     public void assemble(IItemHandler outputSlots, List<IFluidHandler> outputTanks) {
         if (!canFitOutputs(outputSlots, outputTanks)) {
-            throw new IllegalStateException("Recipe outputs no longer fit: " + id);
+            throw new RecipeTransactionException("Recipe outputs no longer fit: " + id);
         }
         MutableStateSnapshot snapshot = MutableStateSnapshot.capture(outputSlots, outputTanks, id, "output");
         try {
             assembleUnchecked(outputSlots, outputTanks);
         } catch (RuntimeException failure) {
             snapshot.rollback(failure);
-            throw new IllegalStateException("Recipe output transaction rolled back: " + id, failure);
+            throw new RecipeTransactionException("Recipe output transaction rolled back: " + id, failure);
         }
     }
 
@@ -292,7 +292,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                     remaining = outputSlots.insertItem(slot, remaining, false);
                 }
                 if (!remaining.isEmpty()) {
-                    throw new IllegalStateException("Output inventory changed during recipe commit: " + id);
+                    throw new RecipeTransactionException("Output inventory changed during recipe commit: " + id);
                 }
             }
         }
@@ -311,12 +311,12 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 portion.setAmount(Math.min(accepted, remaining.getAmount()));
                 int filled = handler.fill(portion, IFluidHandler.FluidAction.EXECUTE);
                 if (filled != portion.getAmount()) {
-                    throw new IllegalStateException("Fluid output handler diverged during recipe commit: " + id);
+                    throw new RecipeTransactionException("Fluid output handler diverged during recipe commit: " + id);
                 }
                 remaining.shrink(filled);
             }
             if (!remaining.isEmpty()) {
-                throw new IllegalStateException("Output fluid handlers changed during recipe commit: " + id);
+                throw new RecipeTransactionException("Output fluid handlers changed during recipe commit: " + id);
             }
         }
     }
@@ -332,7 +332,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             return true;
         } catch (RuntimeException failure) {
             snapshot.rollback(failure);
-            throw new IllegalStateException("Recipe input transaction rolled back: " + id, failure);
+            throw new RecipeTransactionException("Recipe input transaction rolled back: " + id, failure);
         }
     }
 
@@ -350,12 +350,12 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 }
                 ItemStack extracted = inputSlots.extractItem(slot, remaining, false);
                 if (!extracted.isEmpty() && !ItemStack.isSameItemSameTags(required, extracted)) {
-                    throw new IllegalStateException("Item input handler returned the wrong stack during recipe commit: " + id);
+                    throw new RecipeTransactionException("Item input handler returned the wrong stack during recipe commit: " + id);
                 }
                 remaining -= extracted.getCount();
             }
             if (remaining > 0) {
-                throw new IllegalStateException("Item input handler changed during recipe commit: " + id);
+                throw new RecipeTransactionException("Item input handler changed during recipe commit: " + id);
             }
         }
 
@@ -369,21 +369,21 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
                 request.setAmount(remaining);
                 FluidStack drained = handler.drain(request, IFluidHandler.FluidAction.EXECUTE);
                 if (!drained.isEmpty() && !sameFluid(ingredient, drained)) {
-                    throw new IllegalStateException("Fluid input handler returned the wrong fluid during recipe commit: " + id);
+                    throw new RecipeTransactionException("Fluid input handler returned the wrong fluid during recipe commit: " + id);
                 }
                 if (sameFluid(ingredient, drained)) {
                     remaining -= drained.getAmount();
                 }
             }
             if (remaining > 0) {
-                throw new IllegalStateException("Fluid input handler changed during recipe commit: " + id);
+                throw new RecipeTransactionException("Fluid input handler changed during recipe commit: " + id);
             }
         }
     }
 
     public void consumeIngredients(IItemHandler inputSlots, List<IFluidHandler> inputTanks) {
         if (!tryConsumeIngredients(inputSlots, inputTanks)) {
-            throw new IllegalStateException("Recipe inputs are no longer available: " + id);
+            throw new RecipeTransactionException("Recipe inputs are no longer available: " + id);
         }
     }
 
@@ -438,7 +438,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             ItemStack[] itemStacks = new ItemStack[0];
             if (itemHandler != null) {
                 if (!(itemHandler instanceof IItemHandlerModifiable modifiable)) {
-                    throw new IllegalStateException("Transactional " + phase + " item handler is not restorable for recipe " + recipeId);
+                    throw new RecipeTransactionException("Transactional " + phase + " item handler is not restorable for recipe " + recipeId);
                 }
                 mutableItems = modifiable;
                 itemStacks = new ItemStack[itemHandler.getSlots()];
@@ -450,7 +450,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             List<FluidState> fluids = new ArrayList<>();
             for (IFluidHandler handler : safeFluidHandlers(fluidHandlers)) {
                 if (!(handler instanceof FluidTank tank)) {
-                    throw new IllegalStateException("Transactional " + phase + " fluid handler is not restorable for recipe " + recipeId);
+                    throw new RecipeTransactionException("Transactional " + phase + " fluid handler is not restorable for recipe " + recipeId);
                 }
                 fluids.add(new FluidState(tank, tank.getFluid().copy()));
             }

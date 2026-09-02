@@ -2,6 +2,7 @@ package com.nstut.nstutlib.blocks;
 
 import com.nstut.nstutlib.models.MultiblockPattern;
 import com.nstut.nstutlib.recipes.ModRecipe;
+import com.nstut.nstutlib.recipes.RecipeTransactionException;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -118,7 +119,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine structure changed while processing at " + pos,
                             exception);
-                } catch (IllegalStateException exception) {
+                } catch (RecipeTransactionException exception) {
                     blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later",

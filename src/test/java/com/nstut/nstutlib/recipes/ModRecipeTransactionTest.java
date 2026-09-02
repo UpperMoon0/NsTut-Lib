@@ -31,7 +31,7 @@ class ModRecipeTransactionTest {
         TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[] {new OutputItem(output, 1.0f)}, new FluidStack[0], new FluidStack[0]);
         DivergingOutputHandler handler = new DivergingOutputHandler();
 
-        assertThrows(IllegalStateException.class, () -> recipe.assemble(handler, List.of()));
+        assertThrows(RecipeTransactionException.class, () -> recipe.assemble(handler, List.of()));
         assertTrue(handler.getStackInSlot(0).isEmpty());
         assertTrue(handler.getStackInSlot(1).isEmpty());
     }
@@ -46,7 +46,7 @@ class ModRecipeTransactionTest {
         FluidTank first = new FluidTank(1000);
         FluidTank second = new DivergingFluidTank(1000);
 
-        assertThrows(IllegalStateException.class, () -> recipe.assemble(null, List.of(first, second)));
+        assertThrows(RecipeTransactionException.class, () -> recipe.assemble(null, List.of(first, second)));
         assertTrue(first.isEmpty());
         assertTrue(second.isEmpty());
     }
@@ -65,7 +65,7 @@ class ModRecipeTransactionTest {
         handler.setStackInSlot(0, new ItemStack(Items.DIAMOND));
         handler.setStackInSlot(1, new ItemStack(Items.GOLD_INGOT));
 
-        assertThrows(IllegalStateException.class, () -> recipe.tryConsumeIngredients(handler, List.of()));
+        assertThrows(RecipeTransactionException.class, () -> recipe.tryConsumeIngredients(handler, List.of()));
         assertEquals(1, handler.getStackInSlot(0).getCount());
         assertEquals(1, handler.getStackInSlot(1).getCount());
     }
@@ -76,7 +76,7 @@ class ModRecipeTransactionTest {
         TestRecipe recipe = recipe(new IngredientItem[0], new OutputItem[] {new OutputItem(output, 1.0f)}, new FluidStack[0], new FluidStack[0]);
         OneShotDivergingOutputHandler handler = new OneShotDivergingOutputHandler();
 
-        assertThrows(IllegalStateException.class, () -> recipe.assemble(handler, List.of()));
+        assertThrows(RecipeTransactionException.class, () -> recipe.assemble(handler, List.of()));
         assertTrue(handler.getStackInSlot(0).isEmpty());
         assertTrue(handler.getStackInSlot(1).isEmpty());
 
