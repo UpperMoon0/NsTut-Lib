@@ -8,11 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class MultiblockPatternTest {
     @Test
     void rotatesHorizontalDirectionsFromSouthReference() {
-        assertEquals(Direction.EAST,
+        assertEquals(Direction.WEST,
                 MultiblockPattern.rotateHorizontalDirection(Direction.WEST, Direction.SOUTH));
         assertEquals(Direction.NORTH,
                 MultiblockPattern.rotateHorizontalDirection(Direction.NORTH, Direction.SOUTH));
-        assertEquals(Direction.WEST,
+        assertEquals(Direction.EAST,
                 MultiblockPattern.rotateHorizontalDirection(Direction.EAST, Direction.SOUTH));
     }
 
