@@ -103,6 +103,8 @@ tasks.named('jar', Jar).configure {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
+            // Keep the legacy/local consumer coordinates stable regardless of checkout directory name.
+            artifactId = 'MC-Mod-NsTut-Lib'
             artifact jar
         }
     }
