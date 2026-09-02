@@ -310,13 +310,34 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         return true;
     }
 
-    public void assemble(IItemHandlerModifiable outputSlots, List<FluidTank> outputTanks) {
+    /**
+     * Fails before mutation unless the handlers can be restored exactly after a divergent commit.
+     * Transactional item handlers must implement {@link IItemHandlerModifiable}; transactional fluid
+     * handlers must be {@link FluidTank} instances or subclasses.
+     */
+    public static void requireRestorableStorage(IItemHandler itemHandler,
+                                                List<? extends IFluidHandler> fluidHandlers,
+                                                String role) {
+        if (itemHandler != null && !(itemHandler instanceof IItemHandlerModifiable)) {
+            throw new IllegalArgumentException("Transactional " + role + " item handler must implement IItemHandlerModifiable");
+        }
+        if (fluidHandlers != null) {
+            for (IFluidHandler handler : fluidHandlers) {
+                if (!(handler instanceof FluidTank)) {
+                    throw new IllegalArgumentException("Transactional " + role + " fluid handler must be a FluidTank or subclass");
+                }
+            }
+        }
+    }
+
+    public void assemble(IItemHandler outputSlots, List<? extends IFluidHandler> outputTanks) {
         assemble(outputSlots, outputTanks, rollItemOutputIndexes());
     }
 
-    public void assemble(IItemHandlerModifiable outputSlots,
-                         List<FluidTank> outputTanks,
+    public void assemble(IItemHandler outputSlots,
+                         List<? extends IFluidHandler> outputTanks,
                          int[] selectedItemOutputIndexes) {
+        requireRestorableStorage(outputSlots, outputTanks, "output");
         if (!areRolledItemOutputIndexesValid(selectedItemOutputIndexes)) {
             throw new IllegalArgumentException("Invalid persisted item-output selection for recipe " + id);
         }
@@ -334,8 +355,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
     }
 
-    private void assembleUnchecked(IItemHandlerModifiable outputSlots,
-                                   List<FluidTank> outputTanks,
+    private void assembleUnchecked(IItemHandler outputSlots,
+                                   List<? extends IFluidHandler> outputTanks,
                                    int[] selectedItemOutputIndexes) {
         OutputItem[] outputs = recipe.getOutputItems();
         boolean[] selected = selectionMask(outputs.length, selectedItemOutputIndexes);
@@ -357,7 +378,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
         for (FluidStack output : recipe.getFluidOutputs()) {
             FluidStack remaining = output.copy();
-            for (FluidTank handler : safeFluidTanks(outputTanks)) {
+            for (IFluidHandler handler : safeFluidHandlers(outputTanks)) {
                 if (remaining.isEmpty()) {
                     break;
                 }
@@ -379,7 +400,8 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
     }
 
-    public boolean tryConsumeIngredients(IItemHandlerModifiable inputSlots, List<FluidTank> inputTanks) {
+    public boolean tryConsumeIngredients(IItemHandler inputSlots, List<? extends IFluidHandler> inputTanks) {
+        requireRestorableStorage(inputSlots, inputTanks, "input");
         if (!hasRequiredItems(inputSlots) || !hasRequiredFluids(inputTanks)) {
             return false;
         }
@@ -396,7 +418,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
     }
 
-    private void consumeIngredientsUnchecked(IItemHandlerModifiable inputSlots, List<FluidTank> inputTanks) {
+    private void consumeIngredientsUnchecked(IItemHandler inputSlots, List<? extends IFluidHandler> inputTanks) {
         for (IngredientItem ingredient : recipe.getIngredientItems()) {
             if (!ingredient.isConsumable()) {
                 continue;
@@ -421,7 +443,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
         for (FluidStack ingredient : recipe.getFluidIngredients()) {
             int remaining = ingredient.getAmount();
-            for (FluidTank handler : safeFluidTanks(inputTanks)) {
+            for (IFluidHandler handler : safeFluidHandlers(inputTanks)) {
                 if (remaining <= 0) {
                     break;
                 }
@@ -441,7 +463,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         }
     }
 
-    public void consumeIngredients(IItemHandlerModifiable inputSlots, List<FluidTank> inputTanks) {
+    public void consumeIngredients(IItemHandler inputSlots, List<? extends IFluidHandler> inputTanks) {
         if (!tryConsumeIngredients(inputSlots, inputTanks)) {
             throw new RecipeTransactionException("Recipe inputs are no longer available: " + id);
         }
@@ -463,7 +485,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         return selected;
     }
 
-    private static List<FluidTank> safeFluidTanks(List<FluidTank> handlers) {
+    private static List<? extends IFluidHandler> safeFluidHandlers(List<? extends IFluidHandler> handlers) {
         return handlers == null ? Collections.emptyList() : handlers;
     }
 
@@ -506,20 +528,23 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             this.fluids = fluids;
         }
 
-        private static MutableStateSnapshot capture(IItemHandlerModifiable itemHandler, List<FluidTank> fluidHandlers) {
+        private static MutableStateSnapshot capture(IItemHandler itemHandler,
+                                                    List<? extends IFluidHandler> fluidHandlers) {
+            IItemHandlerModifiable mutableItems = itemHandler == null ? null : (IItemHandlerModifiable) itemHandler;
             ItemStack[] itemStacks = new ItemStack[0];
-            if (itemHandler != null) {
-                itemStacks = new ItemStack[itemHandler.getSlots()];
-                for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
-                    itemStacks[slot] = itemHandler.getStackInSlot(slot).copy();
+            if (mutableItems != null) {
+                itemStacks = new ItemStack[mutableItems.getSlots()];
+                for (int slot = 0; slot < mutableItems.getSlots(); slot++) {
+                    itemStacks[slot] = mutableItems.getStackInSlot(slot).copy();
                 }
             }
 
             List<FluidState> fluids = new ArrayList<>();
-            for (FluidTank tank : safeFluidTanks(fluidHandlers)) {
+            for (IFluidHandler handler : safeFluidHandlers(fluidHandlers)) {
+                FluidTank tank = (FluidTank) handler;
                 fluids.add(new FluidState(tank, tank.getFluid().copy()));
             }
-            return new MutableStateSnapshot(itemHandler, itemStacks, fluids);
+            return new MutableStateSnapshot(mutableItems, itemStacks, fluids);
         }
 
         private void rollbackOrThrow(RuntimeException originalFailure,
