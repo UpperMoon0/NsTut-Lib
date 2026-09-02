@@ -5,10 +5,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.templates.FluidTank;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -126,7 +126,7 @@ class ModRecipeTransactionTest {
                                      FluidStack[] fluidInputs,
                                      FluidStack[] fluidOutputs) {
         return new TestRecipe(
-                new ResourceLocation("nstutlib", "transaction_test"),
+                ResourceLocation.fromNamespaceAndPath("nstutlib", "transaction_test"),
                 new ModRecipeData(inputs, outputs, fluidInputs, fluidOutputs, 100));
     }
 
