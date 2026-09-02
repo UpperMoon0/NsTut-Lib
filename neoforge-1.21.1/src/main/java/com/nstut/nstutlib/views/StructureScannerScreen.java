@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedWriter;
@@ -92,7 +92,7 @@ public class StructureScannerScreen extends Screen {
     private void onSave(Button ignored) {
         int[] corners = readCorners();
         if (corners == null) return;
-        ClientPacketDistributor.sendToServer(new StructureScannerC2SPacket(corners[0], corners[1], corners[2], corners[3], corners[4], corners[5]));
+        PacketDistributor.sendToServer(new StructureScannerC2SPacket(corners[0], corners[1], corners[2], corners[3], corners[4], corners[5]));
     }
 
     private void onExport(Button ignored) {
