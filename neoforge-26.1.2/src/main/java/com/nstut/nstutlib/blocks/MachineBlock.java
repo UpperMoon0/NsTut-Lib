@@ -12,10 +12,8 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RenderShape;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -38,8 +36,9 @@ public class MachineBlock extends BaseEntityBlock {
     private static final Logger LOGGER = LogUtils.getLogger();
     private final BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory;
 
-    public MachineBlock(BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory) {
-        super(BlockBehaviour.Properties.ofFullCopy(Blocks.GRAY_CONCRETE).strength(2f).sound(SoundType.METAL));
+    public MachineBlock(BlockBehaviour.Properties properties,
+                        BiFunction<BlockPos, BlockState, ? extends MachineBlockEntity> blockEntityFactory) {
+        super(properties);
         this.blockEntityFactory = Objects.requireNonNull(blockEntityFactory, "blockEntityFactory");
         registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
