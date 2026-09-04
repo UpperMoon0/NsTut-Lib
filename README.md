@@ -22,8 +22,9 @@ Network protocol compatibility is strict. Multiblock validation honors authored 
 
 ## Documentation
 
-- `CHANGELOG.md` for release notes
-- `docs/upgrade-0.8.md` for the 0.8.1 migration contract
-- `docs/recipes-0.8.md` for transactional recipe behavior
-- `docs/networking-0.8.md` for networking changes
+- `CHANGELOG.md` for the canonical changelog
+- `CHANGELOG-0.8.1.md` for the complete 0.8.1 release notes
+- `docs/upgrade-0.8.1.md` for the 0.8.1 migration contract
+- `docs/recipes-0.8.md` for the 0.8.x transactional recipe API
+- `docs/networking-0.8.md` for the 0.8.x networking contract
 - `README_HARDENING.md` for the hardening summary
