@@ -1,4 +1,4 @@
-# NsTut Lib 0.8
+# NsTut Lib 0.8.1
 
 ## Fixed
 - Make recipe processing transactional and persist active recipe/progress state across reloads.
@@ -13,6 +13,9 @@
 - Validate active machines every tick and revalidate immediately before recipe start, preventing stale-validity consumption after structure breaks.
 - Preserve safely rolled-back active recipes after transactional capability divergence and retry with bounded backoff instead of failing the server tick.
 - Replace reflective machine construction with typed factories.
+- Fix NeoForge 26.1.2 keyed `MachineBlock` construction by accepting and forwarding the registry-owned `BlockBehaviour.Properties` instance.
 - Make Smart Hammer dedicated-server safe, deterministic to its invoking player, resource-preflighted, and non-destructive.
 - Make Structure Scanner sync player-targeted, volume-bounded, cross-platform, and generate valid pattern output.
 - Remove tracked runtime/local-Maven artifacts and add CI/regression tests.
+
+0.8.1 supersedes the incompatible 0.8 binary for NeoForge 26.1.2 consumers.
