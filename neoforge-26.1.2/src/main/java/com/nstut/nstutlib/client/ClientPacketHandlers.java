@@ -2,10 +2,7 @@ package com.nstut.nstutlib.client;
 
 import com.nstut.nstutlib.views.StructureScannerScreen;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
-@OnlyIn(Dist.CLIENT)
 public final class ClientPacketHandlers {
     private ClientPacketHandlers() {
     }
