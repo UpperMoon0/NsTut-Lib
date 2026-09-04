@@ -19,8 +19,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +36,6 @@ import java.util.StringJoiner;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@OnlyIn(Dist.CLIENT)
 public class StructureScannerScreen extends Screen {
     private static final Path OUTPUT_DIR = FMLPaths.GAMEDIR.get().resolve("nstut_script_output");
     private static final long MAX_EXPORT_BLOCKS = 32_768L;
