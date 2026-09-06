@@ -1,6 +1,7 @@
 package com.nstut.nstutlib.models;
 
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CrossCollisionBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 public final class StructureScannerStateFilter {
+    private static final Set<String> HORIZONTAL_CONNECTION_PROPERTIES = Set.of("north", "east", "south", "west");
     private static final Set<String> WALL_CONNECTION_PROPERTIES = Set.of("up", "north", "east", "south", "west");
 
     private StructureScannerStateFilter() {
@@ -32,6 +34,9 @@ public final class StructureScannerStateFilter {
             return false;
         }
         if (state.getBlock() instanceof StairBlock && "shape".equals(name)) {
+            return false;
+        }
+        if (state.getBlock() instanceof CrossCollisionBlock && HORIZONTAL_CONNECTION_PROPERTIES.contains(name)) {
             return false;
         }
         return !(state.getBlock() instanceof WallBlock) || !WALL_CONNECTION_PROPERTIES.contains(name);
