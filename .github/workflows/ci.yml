@@ -53,11 +53,7 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: gradle
       - name: Unit tests and build
-        if: matrix.target != 'forge-1.20.1'
         run: ./gradlew :${{ matrix.target }}:test :${{ matrix.target }}:build --no-daemon --stacktrace
-      - name: Forge build
-        if: matrix.target == 'forge-1.20.1'
-        run: ./gradlew :forge-1.20.1:build -x :forge-1.20.1:test --no-daemon --stacktrace
       - name: Forge transaction GameTests
         if: matrix.target == 'forge-1.20.1'
         run: ./gradlew :forge-1.20.1:runGameTestServer --no-daemon --stacktrace

@@ -2,6 +2,7 @@ package com.nstut.nstutlib.blocks;
 
 import com.nstut.nstutlib.models.MultiblockPattern;
 import com.nstut.nstutlib.recipes.ModRecipe;
+import com.nstut.nstutlib.recipes.ModRecipeData;
 import com.nstut.nstutlib.recipes.RecipeTransactionCorruptedException;
 import com.nstut.nstutlib.recipes.RecipeTransactionException;
 import lombok.Getter;
@@ -53,6 +54,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected boolean ingredientsConsumed;
 
     private ResourceKey<Recipe<?>> activeRecipeKey;
+    private ModRecipeData activeRecipeSnapshot;
     private int[] activeItemOutputIndexes;
     private int structureCheckCooldown;
     private int processingFailureCooldown;
@@ -74,6 +76,9 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         activeRecipeKey = null;
         Identifier id = Identifier.tryParse(input.getStringOr("activeRecipeId", ""));
         if (id != null) activeRecipeKey = ResourceKey.create(Registries.RECIPE, id);
+        activeRecipeSnapshot = input.read("activeRecipeSnapshot", ModRecipeData.CODEC)
+                .map(ModRecipeData::copy).orElse(null);
+        if (activeRecipeKey == null) activeRecipeSnapshot = null;
         activeItemOutputIndexes = input.getIntArray("activeItemOutputIndexes").orElse(null);
         recipeHandler = Optional.empty();
         structureCheckCooldown = 0;
@@ -86,7 +91,12 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         output.putInt("energyConsumed", Math.max(0, energyConsumed));
         output.putInt("recipeEnergyCost", Math.max(0, recipeEnergyCost));
         output.putBoolean("ingredientsConsumed", ingredientsConsumed);
-        if (activeRecipeKey != null) output.putString("activeRecipeId", activeRecipeKey.identifier().toString());
+        if (activeRecipeKey != null) {
+            output.putString("activeRecipeId", activeRecipeKey.identifier().toString());
+            if (activeRecipeSnapshot != null) {
+                output.store("activeRecipeSnapshot", ModRecipeData.CODEC, activeRecipeSnapshot);
+            }
+        }
         if (activeItemOutputIndexes != null) output.putIntArray("activeItemOutputIndexes", activeItemOutputIndexes);
     }
 
@@ -224,17 +234,42 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
 
     private <R extends ModRecipe<R>> void restoreRecipeHandler(ServerLevel level, RecipeType<R> expectedType) {
         if (recipeHandler.isPresent() || activeRecipeKey == null) return;
-
-        Optional<RecipeHolder<?>> restored = level.recipeAccess().byKey(activeRecipeKey);
-        if (restored.isPresent() && restored.get().value() instanceof ModRecipe<?> modRecipe && modRecipe.getType() == expectedType) {
-            recipeHandler = Optional.of(modRecipe);
-            recipeEnergyCost = Math.max(0, modRecipe.getTotalEnergy());
-            energyConsumed = Math.min(energyConsumed, recipeEnergyCost);
-            ensureOutputRolls(modRecipe);
-        } else {
-            LOGGER.warning("Unable to restore active recipe " + activeRecipeKey.identifier() + " at " + worldPosition);
+        if (activeRecipeSnapshot == null) {
+            LOGGER.warning("Refusing to restore active recipe " + activeRecipeKey.identifier() + " at " + worldPosition
+                    + " because the saved transaction has no recipe-definition snapshot");
             clearActiveRecipe();
+            return;
         }
+
+        ModRecipe<?> prototype = null;
+        Optional<RecipeHolder<?>> restored = level.recipeAccess().byKey(activeRecipeKey);
+        if (restored.isPresent()
+                && restored.get().value() instanceof ModRecipe<?> modRecipe
+                && modRecipe.getType() == expectedType) {
+            prototype = modRecipe;
+        }
+        if (prototype == null) {
+            prototype = recipesFor(level, expectedType).findFirst().map(RecipeHolder::value).orElse(null);
+        }
+        if (prototype == null) {
+            LOGGER.warning("Unable to restore active recipe " + activeRecipeKey.identifier() + " at " + worldPosition
+                    + "; no compatible recipe implementation remains for its machine type");
+            clearActiveRecipe();
+            return;
+        }
+
+        ModRecipe<?> snapshotRecipe = createSnapshotRecipe(prototype, activeRecipeKey.identifier(), activeRecipeSnapshot);
+        recipeHandler = Optional.of(snapshotRecipe);
+        recipeEnergyCost = Math.max(0, snapshotRecipe.getTotalEnergy());
+        energyConsumed = Math.min(energyConsumed, recipeEnergyCost);
+        ensureOutputRolls(snapshotRecipe);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static ModRecipe<?> createSnapshotRecipe(ModRecipe<?> prototype,
+                                                     Identifier recipeId,
+                                                     ModRecipeData snapshot) {
+        return (ModRecipe<?>) ((ModRecipe) prototype).create(recipeId, snapshot.copy());
     }
 
     private void ensureOutputRolls(ModRecipe<?> recipe) {
@@ -247,6 +282,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     private void startRecipe(ResourceKey<Recipe<?>> recipeKey, ModRecipe<?> recipe) {
         recipeHandler = Optional.of(recipe);
         activeRecipeKey = recipeKey;
+        activeRecipeSnapshot = recipe.getRecipe().copy();
         activeItemOutputIndexes = recipe.rollItemOutputIndexes();
         recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
         energyConsumed = 0;
@@ -258,6 +294,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
     protected final void clearActiveRecipe() {
         recipeHandler = Optional.empty();
         activeRecipeKey = null;
+        activeRecipeSnapshot = null;
         activeItemOutputIndexes = null;
         recipeEnergyCost = 0;
         energyConsumed = 0;
