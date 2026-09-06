@@ -1,0 +1,68 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.141'
+}
+
+version = rootProject.mod_version
+group = rootProject.mod_group_id
+base { archivesName = "nstutlib-forge-${rootProject.minecraft_version_1_20_1}" }
+java { toolchain.languageVersion = JavaLanguageVersion.of(17); withSourcesJar() }
+
+legacyForge {
+    version = "${rootProject.minecraft_version_1_20_1}-${rootProject.forge_version_1_20_1}"
+    validateAccessTransformers = true
+    addModdingDependenciesTo(sourceSets.test)
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'forge.enabledGameTestNamespaces', rootProject.mod_id
+        }
+        data { data() }
+        configureEach { logLevel = org.slf4j.event.Level.INFO }
+    }
+    mods { "${rootProject.mod_id}" { sourceSet(sourceSets.main) } }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+repositories {
+    maven { name = "Jared's maven"; url = 'https://maven.blamejared.com/' }
+    maven { url = 'https://www.cursemaven.com'; content { includeGroup 'curse.maven' } }
+}
+dependencies {
+    compileOnly "org.projectlombok:lombok:${rootProject.lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${rootProject.lombok_version}"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
+}
+test { useJUnitPlatform() }
+
+tasks.named('processResources', ProcessResources).configure {
+    def p = [minecraft_version_range: rootProject.minecraft_version_range_1_20_1,
+             forge_version_range: rootProject.forge_version_range_1_20_1,
+             loader_version_range: rootProject.forge_loader_range_1_20_1,
+             mod_id: rootProject.mod_id, mod_name: rootProject.mod_name, mod_license: rootProject.mod_license,
+             mod_version: rootProject.mod_version, mod_authors: rootProject.mod_authors, mod_description: rootProject.mod_description]
+    inputs.properties p
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) { expand p }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes('Specification-Title': rootProject.mod_id,
+                   'Specification-Vendor': rootProject.mod_authors,
+                   'Implementation-Title': project.name,
+                   'Implementation-Version': project.version)
+    }
+}
+publishing {
+    publications {
+        mavenJava(MavenPublication) { from components.java; artifactId = base.archivesName.get() }
+        legacy(MavenPublication) { artifact tasks.named('jar'); artifactId = 'MC-Mod-NsTut-Lib' }
+    }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

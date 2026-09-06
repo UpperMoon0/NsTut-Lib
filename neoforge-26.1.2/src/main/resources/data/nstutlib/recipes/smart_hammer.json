@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    },
+    "E": {
+      "item": "minecraft:emerald_block"
+    }
+  },
+  "pattern": [
+    " IE",
+    " SI",
+    "S  "
+  ],
+  "result": {
+    "item": "nstutlib:smart_hammer"
+  },
+  "show_notification": true
+}
