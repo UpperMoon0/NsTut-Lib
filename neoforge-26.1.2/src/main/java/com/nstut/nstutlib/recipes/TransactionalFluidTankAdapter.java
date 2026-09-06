@@ -1,5 +1,7 @@
 package com.nstut.nstutlib.recipes;
 
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
@@ -11,8 +13,8 @@ import java.util.function.Consumer;
 /**
  * Adapts a single-tank {@link IFluidHandler} to the restorable {@link FluidTank}
  * contract used by recipe transactions. The delegate remains authoritative for
- * normal I/O while rollback restores the underlying native storage through the
- * supplied callback.
+ * all observable state and normal I/O while rollback restores the underlying
+ * native storage through the supplied callback.
  */
 public final class TransactionalFluidTankAdapter extends FluidTank {
     private final IFluidHandler delegate;
@@ -33,8 +35,46 @@ public final class TransactionalFluidTankAdapter extends FluidTank {
     }
 
     @Override
+    public int getFluidAmount() {
+        return getFluid().getAmount();
+    }
+
+    @Override
+    public int getCapacity() {
+        return delegate.getTankCapacity(0);
+    }
+
+    @Override
+    public boolean isFluidValid(FluidStack stack) {
+        return delegate.isFluidValid(0, stack);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return getFluid().isEmpty();
+    }
+
+    @Override
+    public int getSpace() {
+        return Math.max(0, getCapacity() - getFluidAmount());
+    }
+
+    @Override
     public void setFluid(FluidStack stack) {
         restorer.accept(stack.copy());
+    }
+
+    @Override
+    public void deserialize(ValueInput input) {
+        setFluid(input.read("Fluid", FluidStack.CODEC).orElse(FluidStack.EMPTY));
+    }
+
+    @Override
+    public void serialize(ValueOutput output) {
+        FluidStack current = getFluid();
+        if (!current.isEmpty()) {
+            output.store("Fluid", FluidStack.CODEC, current.copy());
+        }
     }
 
     @Override
