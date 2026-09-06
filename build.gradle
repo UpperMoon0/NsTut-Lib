@@ -3,6 +3,15 @@ allprojects {
     version = rootProject.mod_version
 }
 
+subprojects {
+    plugins.withId('java-library') {
+        sourceSets {
+            main.java.srcDir rootProject.file('common/src/main/java')
+            test.java.srcDir rootProject.file('common/src/test/java')
+        }
+    }
+}
+
 tasks.register('buildAll') {
     group = 'build'
     description = 'Builds every supported Minecraft/loader target.'
