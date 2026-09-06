@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -108,6 +109,24 @@ class ModRecipeTransactionTest {
         assertTrue(handler.getStackInSlot(0).is(Items.EMERALD));
         assertEquals(1, handler.getStackInSlot(1).getCount());
         assertTrue(handler.getStackInSlot(1).is(Items.EMERALD));
+    }
+
+    @Test
+    void persistedChanceSelectionMustRespectDeterministicOutputs() {
+        TestRecipe recipe = recipe(
+                new IngredientItem[0],
+                new OutputItem[] {
+                        new OutputItem(new ItemStack(Items.DIAMOND), 1.0f),
+                        new OutputItem(new ItemStack(Items.EMERALD), 0.0f),
+                        new OutputItem(new ItemStack(Items.GOLD_INGOT), 0.5f)
+                },
+                new FluidStack[0],
+                new FluidStack[0]);
+
+        assertFalse(recipe.areRolledItemOutputIndexesValid(new int[] {}));
+        assertFalse(recipe.areRolledItemOutputIndexesValid(new int[] {0, 1}));
+        assertTrue(recipe.areRolledItemOutputIndexesValid(new int[] {0}));
+        assertTrue(recipe.areRolledItemOutputIndexesValid(new int[] {0, 2}));
     }
 
     @Test

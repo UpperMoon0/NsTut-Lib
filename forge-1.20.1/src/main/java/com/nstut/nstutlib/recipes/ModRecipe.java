@@ -188,13 +188,22 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         if (selectedIndexes == null) {
             return false;
         }
-        int outputCount = recipe.getOutputItems().length;
-        boolean[] seen = new boolean[outputCount];
+        OutputItem[] outputs = recipe.getOutputItems();
+        boolean[] seen = new boolean[outputs.length];
         for (int index : selectedIndexes) {
-            if (index < 0 || index >= outputCount || seen[index]) {
+            if (index < 0 || index >= outputs.length || seen[index]) {
                 return false;
             }
             seen[index] = true;
+        }
+        for (int index = 0; index < outputs.length; index++) {
+            float chance = outputs[index].getChance();
+            if (chance >= 1.0f && !seen[index]) {
+                return false;
+            }
+            if (chance <= 0.0f && seen[index]) {
+                return false;
+            }
         }
         return true;
     }
