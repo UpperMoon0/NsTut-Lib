@@ -36,9 +36,6 @@ import java.util.stream.Stream;
 
 public abstract class MachineBlockEntity extends BlockEntity implements MenuProvider, Multiblock {
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
-    private static final int ACTIVE_STRUCTURE_CHECK_INTERVAL = 0;
-    private static final int IDLE_STRUCTURE_CHECK_INTERVAL = 20;
-    private static final int PROCESSING_FAILURE_RETRY_INTERVAL = 20;
 
     protected MultiblockPattern multiblockPattern;
 
@@ -106,7 +103,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         boolean previousStructureValid = blockEntity.isStructureValid;
         if (blockEntity.structureCheckCooldown <= 0) {
             blockEntity.isStructureValid = blockEntity.checkMultiblock(level, pos, state);
-            blockEntity.structureCheckCooldown = blockEntity.hasActiveRecipe() ? ACTIVE_STRUCTURE_CHECK_INTERVAL : IDLE_STRUCTURE_CHECK_INTERVAL;
+            blockEntity.structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(blockEntity.hasActiveRecipe());
         } else {
             blockEntity.structureCheckCooldown--;
         }
@@ -120,12 +117,12 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     blockEntity.processRecipe(level, pos);
                 } catch (RecipeTransactionCorruptedException exception) {
                     blockEntity.clearActiveRecipe();
-                    blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
+                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.SEVERE,
                             "Machine transaction rollback failed at " + pos + "; active recipe was cancelled to prevent duplicate output or repeated consumption",
                             exception);
                 } catch (RecipeTransactionException exception) {
-                    blockEntity.processingFailureCooldown = PROCESSING_FAILURE_RETRY_INTERVAL;
+                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later", exception);
                 } catch (ClassCastException | NullPointerException | IllegalStateException exception) {
@@ -183,7 +180,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             if (nextRecipe.isEmpty()) return;
             RecipeHolder<R> holder = nextRecipe.get();
             startRecipe(holder.id(), holder.value());
-            structureCheckCooldown = ACTIVE_STRUCTURE_CHECK_INTERVAL;
+            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
         }
 
         if (recipeHandler.get().getType() != recipeType) {
@@ -224,6 +221,14 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
 
         if (energyConsumed >= recipeEnergyCost && activeRecipe.canFitOutputs(outputSlots, outputTanks, activeItemOutputIndexes)) {
+            BlockState controllerState = level.getBlockState(worldPosition);
+            if (!checkMultiblock(level, worldPosition, controllerState)) {
+                isStructureValid = false;
+                structureCheckCooldown = 0;
+                return;
+            }
+            isStructureValid = true;
+            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
             activeRecipe.assemble(outputSlots, outputTanks, activeItemOutputIndexes);
             clearActiveRecipe();
         }
