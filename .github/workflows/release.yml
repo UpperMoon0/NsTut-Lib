@@ -178,7 +178,7 @@ jobs:
             exit 1
           fi
           test -f "$CHANGELOG_PATH"
-          game_version_names="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc, $loader, $java, "Client", "Server"]')"
+          game_version_names="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc, $loader, $java, "Client"]')"
           changelog="$(<"$CHANGELOG_PATH")"
           metadata="$(jq -cn --arg changelog "$changelog" --arg displayName "NsTut Lib ${MOD_VERSION} - ${LOADER_NAME} ${MINECRAFT_VERSION}" --argjson gameVersionNames "$game_version_names" '{changelog:$changelog,changelogType:"markdown",displayName:$displayName,gameVersionNames:$gameVersionNames,releaseType:"release"}')"
           response_file="$(mktemp)"
