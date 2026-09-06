@@ -19,5 +19,6 @@
 - Make Smart Hammer dedicated-server safe, deterministic to its invoking player, resource-preflighted, and non-destructive.
 - Make Structure Scanner sync player-targeted, volume-bounded, cross-platform, and generate valid pattern output.
 - Remove tracked runtime/local-Maven artifacts and add CI/regression tests.
+- Update the Foojay toolchain resolver to 1.0.0 for Gradle 9.1 compatibility in CI and local publishing.
 
 0.8.1 supersedes the incompatible 0.8 binary for NeoForge 26.1.2 consumers.

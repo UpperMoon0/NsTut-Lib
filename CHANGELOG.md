@@ -13,5 +13,6 @@
 - Restricted Structure Scanner sync to the requesting player, tightened network protocol compatibility, and hardened export bounds/path handling.
 - Made Smart Hammer use the invoking player, preflight resources, refuse destructive replacement, and require water buckets in survival.
 - Removed tracked runtime logs/local Maven output and added CI coverage.
+- Updated the Foojay toolchain resolver to 1.0.0 so Gradle 9.1 builds and Maven-local publishing work without a settings workaround.
 
 > 0.8.1 supersedes the incompatible 0.8 binary. NeoForge 26.1.2 consumers should require 0.8.1 or newer within the 0.8.x compatibility line.
