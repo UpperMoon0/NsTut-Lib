@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TransactionalFluidTankAdapterTest {
@@ -36,12 +37,20 @@ class TransactionalFluidTankAdapterTest {
         ModRecipe.requireRestorableStorage(null, List.of(adapter), "input");
 
         assertEquals(1000, adapter.fill(new FluidStack(Fluids.WATER, 1000), IFluidHandler.FluidAction.EXECUTE));
+        assertEquals(1000, adapter.getFluidAmount());
+        assertEquals(4000, adapter.getCapacity());
+        assertEquals(3000, adapter.getSpace());
+        assertFalse(adapter.isEmpty());
+        assertTrue(adapter.isFluidValid(new FluidStack(Fluids.WATER, 1)));
+
         FluidStack snapshot = adapter.getFluid().copy();
         assertEquals(500, adapter.drain(500, IFluidHandler.FluidAction.EXECUTE).getAmount());
         assertEquals(500, backing.getFluidAmount());
+        assertEquals(500, adapter.getFluidAmount());
 
         adapter.setFluid(snapshot);
         assertEquals(1000, backing.getFluidAmount());
+        assertEquals(1000, adapter.getFluidAmount());
     }
 
     private static final class DelegatingHandler implements IFluidHandler {
