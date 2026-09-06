@@ -52,7 +52,15 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: gradle
-      - name: Unit tests and build
+      - name: Forge test compilation and assemble
+        if: matrix.target == 'forge-1.20.1'
+        # LegacyForge 1.20.1 has no mod-aware JUnit launcher. Executing transformed,
+        # originally signed Forge classes in plain JUnit intermittently trips JVM
+        # signature verification. Compile every test source here and execute the
+        # runtime-sensitive coverage in the Forge GameTest server below.
+        run: ./gradlew :forge-1.20.1:testClasses :forge-1.20.1:assemble --no-daemon --stacktrace
+      - name: NeoForge unit tests and build
+        if: matrix.target != 'forge-1.20.1'
         run: ./gradlew :${{ matrix.target }}:test :${{ matrix.target }}:build --no-daemon --stacktrace
       - name: Forge transaction GameTests
         if: matrix.target == 'forge-1.20.1'
