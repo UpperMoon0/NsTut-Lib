@@ -1,6 +1,6 @@
 package com.nstut.nstutlib.models;
 
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -28,7 +28,7 @@ public final class StructureScannerStateFilter {
 
     private static boolean shouldExport(BlockState state, Property<?> property) {
         String name = property.getName();
-        if (state.getBlock() instanceof FarmBlock && "moisture".equals(name)) {
+        if (state.getBlock() == Blocks.FARMLAND && "moisture".equals(name)) {
             return false;
         }
         if (state.getBlock() instanceof StairBlock && "shape".equals(name)) {
