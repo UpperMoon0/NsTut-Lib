@@ -51,7 +51,7 @@ public class MultiblockPattern {
                             z,
                             controllerState);
                     BlockState actual = level.getBlockState(currentPos);
-                    if (!matches(expected, actual, controllerState)) {
+                    if (!matchesBlock(expected, actual, controllerState)) {
                         return false;
                     }
                 }
@@ -60,7 +60,7 @@ public class MultiblockPattern {
         return true;
     }
 
-    private boolean matches(MultiblockBlock expected, BlockState actual, BlockState controllerState) {
+    public static boolean matchesBlock(MultiblockBlock expected, BlockState actual, BlockState controllerState) {
         if (!actual.is(expected.getBlock())) {
             return false;
         }

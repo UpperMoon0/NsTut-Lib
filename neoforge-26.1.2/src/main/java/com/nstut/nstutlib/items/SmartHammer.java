@@ -101,10 +101,10 @@ public class SmartHammer extends Item {
                             controllerState);
                     if (target.equals(controllerPos)) continue;
 
+                    BlockState current = level.getBlockState(target);
+                    if (MultiblockPattern.matchesBlock(expected, current, controllerState)) continue;
                     Map<String, String> states = rotateFacing(expected.getStates(), controllerFacing);
                     BlockState desired = applyBlockStates(expected.getBlock().defaultBlockState(), states);
-                    BlockState current = level.getBlockState(target);
-                    if (current.equals(desired)) continue;
                     if (!current.canBeReplaced()) {
                         notify(player, "Cannot replace " + current.getBlock().getName().getString() + " at " + target.toShortString());
                         return false;
