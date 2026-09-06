@@ -3,6 +3,7 @@ package com.nstut.nstutlib.blocks;
 import com.nstut.nstutlib.models.MultiblockPattern;
 import com.nstut.nstutlib.recipes.ModRecipe;
 import com.nstut.nstutlib.recipes.ModRecipeData;
+import com.nstut.nstutlib.recipes.RecipePreflight;
 import com.nstut.nstutlib.recipes.RecipeTransactionCorruptedException;
 import com.nstut.nstutlib.recipes.RecipeTransactionException;
 import lombok.Getter;
@@ -222,7 +223,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             Stream<R> candidates = level.getRecipeManager()
                     .getAllRecipesFor(recipeType)
                     .stream()
-                    .filter(recipe -> recipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks));
+                    .filter(recipe -> RecipePreflight.matchesInputs(recipe, inputSlots, inputTanks));
             Optional<R> nextRecipe = recipePreference == null
                     ? candidates.findFirst()
                     : candidates.max(recipePreference);
@@ -244,8 +245,14 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         ensureOutputRolls(activeRecipe);
 
         if (!ingredientsConsumed) {
-            if (!activeRecipe.recipeMatch(inputSlots, inputTanks, outputSlots, outputTanks)
-                    || !activeRecipe.tryConsumeIngredients(inputSlots, inputTanks)) {
+            if (!RecipePreflight.matchesInputs(activeRecipe, inputSlots, inputTanks)) {
+                clearActiveRecipe();
+                return;
+            }
+            if (!activeRecipe.canFitOutputs(outputSlots, outputTanks, activeItemOutputIndexes)) {
+                return;
+            }
+            if (!activeRecipe.tryConsumeIngredients(inputSlots, inputTanks)) {
                 clearActiveRecipe();
                 return;
             }
