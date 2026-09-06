@@ -14,6 +14,11 @@ class StructureScannerStateFilterTest {
         Map<String, String> farmland = StructureScannerStateFilter.exportStates(Blocks.FARMLAND.defaultBlockState());
         assertFalse(farmland.containsKey("moisture"));
 
+        Map<String, String> leaves = StructureScannerStateFilter.exportStates(Blocks.OAK_LEAVES.defaultBlockState());
+        assertFalse(leaves.containsKey("distance"));
+        assertTrue(leaves.containsKey("persistent"));
+        assertTrue(leaves.containsKey("waterlogged"));
+
         Map<String, String> stairs = StructureScannerStateFilter.exportStates(Blocks.OAK_STAIRS.defaultBlockState());
         assertFalse(stairs.containsKey("shape"));
         assertTrue(stairs.containsKey("facing"));
