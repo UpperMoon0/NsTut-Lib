@@ -98,7 +98,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             int remaining = required.getCount();
             for (int slot = 0; slot < inputSlots.getSlots() && remaining > 0; slot++) {
                 ItemStack present = inputSlots.getStackInSlot(slot);
-                if (ItemStack.isSameItemSameTags(required, present)) {
+                if (itemIngredientsMatch(required, present)) {
                     remaining -= Math.min(remaining, present.getCount());
                 }
             }
@@ -114,7 +114,7 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
         for (IngredientItem ingredient : recipe.getIngredientItems()) {
             ItemStack ingredientStack = ingredient.getItemStack();
             ItemStack aggregate = requiredStacks.stream()
-                    .filter(existing -> ItemStack.isSameItemSameTags(existing, ingredientStack))
+                    .filter(existing -> itemIngredientsMatch(existing, ingredientStack))
                     .findFirst()
                     .orElse(null);
             if (aggregate == null) {
@@ -436,11 +436,11 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
             int remaining = required.getCount();
             for (int slot = 0; slot < inputSlots.getSlots() && remaining > 0; slot++) {
                 ItemStack present = inputSlots.getStackInSlot(slot);
-                if (!ItemStack.isSameItemSameTags(required, present)) {
+                if (!itemIngredientsMatch(required, present)) {
                     continue;
                 }
                 ItemStack extracted = inputSlots.extractItem(slot, remaining, false);
-                if (!extracted.isEmpty() && !ItemStack.isSameItemSameTags(required, extracted)) {
+                if (!extracted.isEmpty() && !itemIngredientsMatch(required, extracted)) {
                     throw new RecipeTransactionException("Item input handler returned the wrong stack during recipe commit: " + id);
                 }
                 remaining -= extracted.getCount();
@@ -496,6 +496,15 @@ public abstract class ModRecipe<T extends ModRecipe<T>> implements Recipe<Contai
 
     private static List<? extends IFluidHandler> safeFluidHandlers(List<? extends IFluidHandler> handlers) {
         return handlers == null ? Collections.emptyList() : handlers;
+    }
+
+    /**
+     * Recipe-level extension point for intentional semantic item matching.
+     * The default remains exact item+NBT matching; subclasses may only loosen this
+     * when their gameplay contract deliberately treats stack state as metadata.
+     */
+    protected boolean itemIngredientsMatch(ItemStack required, ItemStack present) {
+        return !required.isEmpty() && !present.isEmpty() && ItemStack.isSameItemSameTags(required, present);
     }
 
     private static boolean sameFluid(FluidStack first, FluidStack second) {

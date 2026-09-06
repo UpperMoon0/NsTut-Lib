@@ -6,6 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.nstutlib.NsTutLib;
 import com.nstut.nstutlib.models.MultiblockBlock;
 import com.nstut.nstutlib.models.MultiblockPattern;
+import com.nstut.nstutlib.models.StructureScannerLayout;
 import com.nstut.nstutlib.models.StructureScannerStateFilter;
 import com.nstut.nstutlib.network.PacketRegistries;
 import com.nstut.nstutlib.network.StructureScannerC2SPacket;
@@ -167,13 +168,15 @@ public class StructureScannerScreen extends Screen {
         MultiblockBlock[][][] blockArray = new MultiblockBlock[(int) height][(int) depth][(int) width];
         for (int y = minY; y <= maxY; y++) {
             for (int z = minZ; z <= maxZ; z++) {
-                for (int x = maxX; x >= minX; x--) {
+                for (int x = minX; x <= maxX; x++) {
                     BlockState state = level.getBlockState(new BlockPos(x, y, z));
                     if (state.isAir()) {
                         continue;
                     }
                     Map<String, String> stateMap = StructureScannerStateFilter.exportStates(state);
-                    blockArray[y - minY][z - minZ][maxX - x] = new MultiblockBlock(state.getBlock(), stateMap);
+                    blockArray[StructureScannerLayout.patternY(y, maxY)]
+                            [StructureScannerLayout.patternZ(z, minZ)]
+                            [StructureScannerLayout.patternX(x, minX)] = new MultiblockBlock(state.getBlock(), stateMap);
                 }
             }
         }
