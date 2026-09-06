@@ -140,13 +140,21 @@ public class SmartHammer extends Item {
         }
 
         for (Placement placement : placements) {
+            boolean consumed = false;
             if (!player.isCreative()) {
                 if (!consumeOne(player, placement.requiredItem)) {
                     notify(player, "Inventory changed while building; stopped safely");
                     return false;
                 }
+                consumed = true;
             }
-            level.setBlock(placement.pos, placement.state, 3);
+            if (!level.setBlock(placement.pos, placement.state, 3)) {
+                if (consumed) {
+                    refundOne(player, placement.requiredItem);
+                }
+                notify(player, "Could not place " + placement.state.getBlock().getName().getString() + " at " + placement.pos.toShortString());
+                return false;
+            }
             if (!player.isCreative() && placement.water) {
                 ItemStack bucket = new ItemStack(Items.BUCKET);
                 if (!player.getInventory().add(bucket)) {
@@ -195,6 +203,13 @@ public class SmartHammer extends Item {
             }
         }
         return false;
+    }
+
+    private static void refundOne(Player player, Item item) {
+        ItemStack refund = new ItemStack(item);
+        if (!player.getInventory().add(refund)) {
+            player.drop(refund, false);
+        }
     }
 
     private static Map<String, String> rotateFacing(Map<String, String> states, Direction controllerFacing) {
