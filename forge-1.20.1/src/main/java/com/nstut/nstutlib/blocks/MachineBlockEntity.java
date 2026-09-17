@@ -1,6 +1,7 @@
 package com.nstut.nstutlib.blocks;
 
 import com.nstut.nstutlib.models.MultiblockPattern;
+import com.nstut.nstutlib.recipes.InputAwareRecipeSnapshot;
 import com.nstut.nstutlib.recipes.ModRecipe;
 import com.nstut.nstutlib.recipes.ModRecipeData;
 import com.nstut.nstutlib.recipes.RecipePreflight;
@@ -225,7 +226,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             if (nextRecipe.isEmpty()) {
                 return;
             }
-            startRecipe(nextRecipe.get());
+            startRecipe(nextRecipe.get(), inputSlots, inputTanks);
             structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
         }
 
@@ -331,12 +332,30 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private void startRecipe(ModRecipe<?> recipe) {
-        recipeHandler = Optional.of(recipe);
-        activeRecipeId = recipe.getId();
-        activeRecipeSnapshot = recipe.getRecipe().copy();
-        activeItemOutputIndexes = recipe.rollItemOutputIndexes();
-        recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
+    private static ModRecipeData executionSnapshot(ModRecipe<?> recipe,
+                                                   IItemHandler inputSlots,
+                                                   List<? extends IFluidHandler> inputTanks) {
+        ModRecipeData snapshot = recipe instanceof InputAwareRecipeSnapshot inputAware
+                ? inputAware.snapshotForExecution(inputSlots, inputTanks)
+                : recipe.getRecipe().copy();
+        if (snapshot == null) {
+            throw new IllegalStateException("Recipe returned a null execution snapshot: " + recipe.getId());
+        }
+        return snapshot.copy();
+    }
+
+    private void startRecipe(ModRecipe<?> recipe,
+                             IItemHandler inputSlots,
+                             List<? extends IFluidHandler> inputTanks) {
+        ResourceLocation recipeId = recipe.getId();
+        ModRecipeData snapshot = executionSnapshot(recipe, inputSlots, inputTanks);
+        ModRecipe<?> executionRecipe = createSnapshotRecipe(recipe, recipeId, snapshot);
+
+        recipeHandler = Optional.of(executionRecipe);
+        activeRecipeId = recipeId;
+        activeRecipeSnapshot = snapshot;
+        activeItemOutputIndexes = executionRecipe.rollItemOutputIndexes();
+        recipeEnergyCost = Math.max(0, executionRecipe.getTotalEnergy());
         energyConsumed = 0;
         ingredientsConsumed = false;
         processingFailureCooldown = 0;
