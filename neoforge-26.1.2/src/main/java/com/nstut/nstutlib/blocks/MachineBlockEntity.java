@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -31,6 +32,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -183,7 +185,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     : candidates.max((left, right) -> recipePreference.compare(left.value(), right.value()));
             if (nextRecipe.isEmpty()) return;
             RecipeHolder<R> holder = nextRecipe.get();
-            startRecipe(holder.id(), holder.value(), inputSlots, inputTanks);
+            startRecipe(holder.id(), holder.value(), inputSlots);
             structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
         }
 
@@ -292,11 +294,18 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private static ModRecipeData executionSnapshot(ModRecipe<?> recipe,
-                                                   IItemHandler inputSlots,
-                                                   List<? extends IFluidHandler> inputTanks) {
+    private static List<ItemStack> snapshotItemInputs(IItemHandler inputSlots) {
+        List<ItemStack> inputs = new ArrayList<>();
+        if (inputSlots == null) return List.of();
+        for (int slot = 0; slot < inputSlots.getSlots(); slot++) {
+            inputs.add(inputSlots.getStackInSlot(slot).copy());
+        }
+        return List.copyOf(inputs);
+    }
+
+    private static ModRecipeData executionSnapshot(ModRecipe<?> recipe, IItemHandler inputSlots) {
         ModRecipeData snapshot = recipe instanceof InputAwareRecipeSnapshot inputAware
-                ? inputAware.snapshotForExecution(inputSlots, inputTanks)
+                ? inputAware.snapshotForExecution(snapshotItemInputs(inputSlots))
                 : recipe.getRecipe().copy();
         if (snapshot == null) {
             throw new IllegalStateException("Recipe returned a null execution snapshot: " + recipe.getId());
@@ -304,11 +313,8 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         return snapshot.copy();
     }
 
-    private void startRecipe(ResourceKey<Recipe<?>> recipeKey,
-                             ModRecipe<?> recipe,
-                             IItemHandler inputSlots,
-                             List<? extends IFluidHandler> inputTanks) {
-        ModRecipeData snapshot = executionSnapshot(recipe, inputSlots, inputTanks);
+    private void startRecipe(ResourceKey<Recipe<?>> recipeKey, ModRecipe<?> recipe, IItemHandler inputSlots) {
+        ModRecipeData snapshot = executionSnapshot(recipe, inputSlots);
         ModRecipe<?> executionRecipe = createSnapshotRecipe(recipe, recipeKey.identifier(), snapshot);
 
         recipeHandler = Optional.of(executionRecipe);
