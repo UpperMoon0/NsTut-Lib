@@ -1,6 +1,7 @@
 package com.nstut.nstutlib.blocks;
 
 import com.nstut.nstutlib.models.MultiblockPattern;
+import com.nstut.nstutlib.recipes.InputAwareRecipeSnapshot;
 import com.nstut.nstutlib.recipes.ModRecipe;
 import com.nstut.nstutlib.recipes.ModRecipeData;
 import com.nstut.nstutlib.recipes.RecipePreflight;
@@ -14,6 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
@@ -27,6 +29,7 @@ import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -225,7 +228,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             if (nextRecipe.isEmpty()) {
                 return;
             }
-            startRecipe(nextRecipe.get());
+            startRecipe(nextRecipe.get(), inputSlots);
             structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
         }
 
@@ -331,12 +334,37 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    private void startRecipe(ModRecipe<?> recipe) {
-        recipeHandler = Optional.of(recipe);
-        activeRecipeId = recipe.getId();
-        activeRecipeSnapshot = recipe.getRecipe().copy();
-        activeItemOutputIndexes = recipe.rollItemOutputIndexes();
-        recipeEnergyCost = Math.max(0, recipe.getTotalEnergy());
+    private static List<ItemStack> snapshotItemInputs(IItemHandler inputSlots) {
+        List<ItemStack> inputs = new ArrayList<>();
+        if (inputSlots == null) {
+            return List.of();
+        }
+        for (int slot = 0; slot < inputSlots.getSlots(); slot++) {
+            inputs.add(inputSlots.getStackInSlot(slot).copy());
+        }
+        return List.copyOf(inputs);
+    }
+
+    private static ModRecipeData executionSnapshot(ModRecipe<?> recipe, IItemHandler inputSlots) {
+        ModRecipeData snapshot = recipe instanceof InputAwareRecipeSnapshot inputAware
+                ? inputAware.snapshotForExecution(snapshotItemInputs(inputSlots))
+                : recipe.getRecipe().copy();
+        if (snapshot == null) {
+            throw new IllegalStateException("Recipe returned a null execution snapshot: " + recipe.getId());
+        }
+        return snapshot.copy();
+    }
+
+    private void startRecipe(ModRecipe<?> recipe, IItemHandler inputSlots) {
+        ResourceLocation recipeId = recipe.getId();
+        ModRecipeData snapshot = executionSnapshot(recipe, inputSlots);
+        ModRecipe<?> executionRecipe = createSnapshotRecipe(recipe, recipeId, snapshot);
+
+        recipeHandler = Optional.of(executionRecipe);
+        activeRecipeId = recipeId;
+        activeRecipeSnapshot = snapshot;
+        activeItemOutputIndexes = executionRecipe.rollItemOutputIndexes();
+        recipeEnergyCost = Math.max(0, executionRecipe.getTotalEnergy());
         energyConsumed = 0;
         ingredientsConsumed = false;
         processingFailureCooldown = 0;
