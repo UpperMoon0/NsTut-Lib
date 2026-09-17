@@ -24,9 +24,12 @@ class InputAwareRecipeSnapshotContractTest {
             String machine = Files.readString(root.resolve(target
                     + "/src/main/java/com/nstut/nstutlib/blocks/MachineBlockEntity.java"));
 
-            assertTrue(hook.contains("snapshotForExecution"), target);
+            assertTrue(hook.contains("snapshotForExecution(List<ItemStack> itemInputs)"), target);
+            assertTrue(!hook.contains("IItemHandler") && !hook.contains("IFluidHandler"), target + " loader-neutral hook");
             assertTrue(machine.contains("recipe instanceof InputAwareRecipeSnapshot"), target);
-            assertTrue(machine.contains("inputAware.snapshotForExecution(inputSlots, inputTanks)"), target);
+            assertTrue(machine.contains("snapshotItemInputs(inputSlots)"), target);
+            assertTrue(machine.contains("inputAware.snapshotForExecution(snapshotItemInputs(inputSlots))"), target);
+            assertTrue(machine.contains("getStackInSlot(slot).copy()"), target + " copied inputs");
             assertTrue(machine.contains("ModRecipe<?> executionRecipe = createSnapshotRecipe"), target);
             assertTrue(machine.contains("recipeHandler = Optional.of(executionRecipe)"), target);
             assertTrue(machine.contains("activeRecipeSnapshot = snapshot"), target);
