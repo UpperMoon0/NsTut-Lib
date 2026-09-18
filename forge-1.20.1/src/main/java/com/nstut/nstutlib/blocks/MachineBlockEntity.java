@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import java.util.function.UnaryOperator;
 
 public abstract class MachineBlockEntity extends BlockEntity implements MenuProvider, Multiblock {
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
@@ -202,6 +203,24 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
+        processRecipeTransaction(level, recipeType, inputSlots, inputTanks, outputSlots, outputTanks,
+                energyStorage, energyPerTick, recipePreference, null);
+    }
+
+    /**
+     * Variant that can replace the selected recipe with a transaction-local prepared copy before
+     * the active recipe snapshot is persisted or any ingredients are consumed.
+     */
+    protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
+                                                                           RecipeType<R> recipeType,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
+                                                                           IEnergyStorage energyStorage,
+                                                                           int energyPerTick,
+                                                                           @Nullable Comparator<R> recipePreference,
+                                                                           @Nullable UnaryOperator<R> recipePreparation) {
         ModRecipe.requireRestorableStorage(inputSlots, inputTanks, "input");
         ModRecipe.requireRestorableStorage(outputSlots, outputTanks, "output");
         restoreRecipeHandler(level, recipeType);
@@ -225,7 +244,18 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             if (nextRecipe.isEmpty()) {
                 return;
             }
-            startRecipe(nextRecipe.get());
+            R selectedRecipe = nextRecipe.get();
+            R preparedRecipe = recipePreparation == null ? selectedRecipe : recipePreparation.apply(selectedRecipe);
+            if (preparedRecipe == null) {
+                throw new IllegalArgumentException("Recipe preparation must not return null");
+            }
+            if (preparedRecipe.getType() != recipeType || !preparedRecipe.getId().equals(selectedRecipe.getId())) {
+                throw new IllegalArgumentException("Prepared recipe must preserve the selected recipe id and type");
+            }
+            if (!RecipePreflight.matchesInputs(preparedRecipe, inputSlots, inputTanks)) {
+                throw new IllegalArgumentException("Prepared recipe no longer matches the selected inputs");
+            }
+            startRecipe(preparedRecipe);
             structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
         }
 
