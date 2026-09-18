@@ -105,7 +105,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         boolean previousStructureValid = blockEntity.isStructureValid;
         if (blockEntity.structureCheckCooldown <= 0) {
             blockEntity.isStructureValid = blockEntity.checkMultiblock(level, pos, state);
-            blockEntity.structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(blockEntity.hasActiveRecipe());
+            blockEntity.structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(blockEntity.hasActiveRecipe());
         } else {
             blockEntity.structureCheckCooldown--;
         }
@@ -119,12 +119,12 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     blockEntity.processRecipe(level, pos);
                 } catch (RecipeTransactionCorruptedException exception) {
                     blockEntity.clearActiveRecipe();
-                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
+                    blockEntity.processingFailureCooldown = MachineProcessingPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.SEVERE,
                             "Machine transaction rollback failed at " + pos + "; active recipe was cancelled to prevent duplicate output or repeated consumption",
                             exception);
                 } catch (RecipeTransactionException exception) {
-                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
+                    blockEntity.processingFailureCooldown = MachineProcessingPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later", exception);
                 } catch (ClassCastException | NullPointerException | IllegalStateException exception) {
@@ -209,7 +209,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 throw new IllegalArgumentException("Prepared recipe no longer matches the selected inputs");
             }
             startRecipe(holder.id(), preparedRecipe);
-            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
+            structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(true);
         }
 
         if (recipeHandler.get().getType() != recipeType) {
@@ -257,7 +257,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 return;
             }
             isStructureValid = true;
-            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
+            structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(true);
             activeRecipe.assemble(outputSlots, outputTanks, activeItemOutputIndexes);
             clearActiveRecipe();
         }
