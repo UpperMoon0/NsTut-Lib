@@ -129,10 +129,13 @@ public class SmartHammer extends Item {
         if (!player.isCreative() && !hasRequiredItems(player, placements)) return false;
 
         for (Placement placement : placements) {
-            if (!level.getBlockState(placement.pos).equals(placement.previous) || level.getBlockEntity(placement.pos) != placement.entity) {
+            BlockState liveState = level.getBlockState(placement.pos);
+            // Earlier placements may legitimately change fence/pipe/stair neighbour properties.
+            BlockState updatedPrevious = Block.updateFromNeighbourShapes(placement.previous, level, placement.pos);
+            if ((!liveState.equals(placement.previous) && !liveState.equals(updatedPrevious)) || level.getBlockEntity(placement.pos) != placement.entity) {
                 blocked(player, level.getBlockState(placement.pos), placement.pos, "world changed while building"); return false;
             }
-            SmartHammerRecovery currentRecovery = recovery(level, placement.pos, placement.previous, placement.entity, player);
+            SmartHammerRecovery currentRecovery = recovery(level, placement.pos, liveState, placement.entity, player);
             ItemStack currentReturn = placement.state.getBlock() == placement.previous.getBlock() ? ItemStack.EMPTY : currentRecovery.item();
             if (!currentRecovery.allowed() || !samePayload(currentReturn, placement.returned)) {
                 blocked(player, placement.previous, placement.pos, "stored data changed while building"); return false;
@@ -145,7 +148,8 @@ public class SmartHammer extends Item {
                 notify(player, "Inventory changed while building; stopped safely"); return false;
             }
             var snapshot = net.neoforged.neoforge.common.util.BlockSnapshot.create(level.dimension(), level, placement.pos);
-            if (!level.setBlock(placement.pos, placement.state, 3) || !MultiblockPattern.matchesBlock(placement.expected, level.getBlockState(placement.pos), controllerState)) {
+            BlockState connectedState = Block.updateFromNeighbourShapes(placement.state, level, placement.pos);
+            if (!level.setBlock(placement.pos, connectedState, 3) || !MultiblockPattern.matchesBlock(placement.expected, level.getBlockState(placement.pos), controllerState)) {
                 boolean restored = snapshot.restore(3);
                 if (consumed && restored) refundOne(player, placement.requiredItem);
                 notify(player, "Could not replace block at " + placement.pos.toShortString()); return false;

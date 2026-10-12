@@ -130,6 +130,19 @@ public final class SmartHammerGameTests {
         helper.succeed();
     }
 
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
+    public static void resolvesNeighbourStatesForNewAndExistingFences(GameTestHelper helper) {
+        var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
+        level.setBlock(pos.west(),Blocks.OAK_FENCE.defaultBlockState(),3);
+        player.getInventory().add(new ItemStack(Items.OAK_FENCE,2));
+        helper.assertTrue(buildTwo(helper,player,pos,Blocks.OAK_FENCE.defaultBlockState()),"Hammer builds connected fence cells");
+        helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.FenceBlock.WEST)
+                &&level.getBlockState(pos).getValue(net.minecraft.world.level.block.FenceBlock.EAST)
+                &&level.getBlockState(pos.east()).getValue(net.minecraft.world.level.block.FenceBlock.WEST),"Every placed cell has reciprocal connections");
+        helper.assertTrue(count(player,Items.OAK_FENCE)==0,"Only the two missing blocks are consumed");
+        helper.succeed();
+    }
+
     private static Player player(GameTestHelper helper){
         var player=FakePlayerFactory.getMinecraft(helper.getLevel());
         player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);player.getInventory().clearContent();player.getAbilities().mayBuild=true;player.getAbilities().instabuild=false;
@@ -144,7 +157,7 @@ public final class SmartHammerGameTests {
     private static boolean buildPattern(GameTestHelper helper,Player player,BlockPos target,MultiblockBlock[][][] blocks){
         BlockPos anchor=target.west();
         helper.getLevel().setBlock(anchor,Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,Direction.SOUTH),3);
-        return ((SmartHammer)ItemRegistries.SMART_HAMMER.get()).buildStructure(helper.getLevel(),player,anchor,new MultiblockPattern(blocks),-1,0,0);
+        return new SmartHammer(new Item.Properties()).buildStructure(helper.getLevel(),player,anchor,new MultiblockPattern(blocks),-1,0,0);
     }
     private static int count(Player player,Item item){int count=0;for(var stack:player.getInventory().items)if(stack.is(item))count+=stack.getCount();return count;}
 }
