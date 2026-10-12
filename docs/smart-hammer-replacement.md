@@ -6,6 +6,8 @@ Shift-use the hammer on a machine controller. The controller is retained and the
 
 The hammer skips matching cells, replaces ordinary single-cell blocks from inventory, and returns each removed block item exactly once. Glass and stone are recovered as their block items rather than mined drops. Farmland/path recover dirt. Non-item replaceable states such as air/water have no invented recovery item; no filled water bucket is minted from world fluid. New water consumes a plain water bucket and returns an empty bucket.
 
+Neighbour-dependent states are resolved against the live world before each placement. Fence, pipe and stair connection updates can adjust earlier placements without extra material consumption. Matching verifies the authored pattern requirements rather than unspecified default connection properties.
+
 Required air cells consume no material. Same-block state corrections reuse the existing block without an extra item/refund. New material stacks must match a plain stack of that item: a renamed/component-bearing storage item is never silently consumed while its data is discarded.
 
 Recovered items go into the player's inventory. Any remainder from a full inventory drops at the player's feet. Creative mode skips material consumption but does not bypass replacement safety.

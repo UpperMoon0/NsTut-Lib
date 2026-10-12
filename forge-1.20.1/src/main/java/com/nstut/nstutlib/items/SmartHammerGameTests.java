@@ -157,7 +157,7 @@ public final class SmartHammerGameTests {
     private static boolean buildPattern(GameTestHelper helper,Player player,BlockPos target,MultiblockBlock[][][] blocks){
         BlockPos anchor=target.west();
         helper.getLevel().setBlock(anchor,Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,Direction.SOUTH),3);
-        return new SmartHammer(new Item.Properties()).buildStructure(helper.getLevel(),player,anchor,new MultiblockPattern(blocks),-1,0,0);
+        return ((SmartHammer)ItemRegistries.SMART_HAMMER.get()).buildStructure(helper.getLevel(),player,anchor,new MultiblockPattern(blocks),-1,0,0);
     }
     private static int count(Player player,Item item){int count=0;for(var stack:player.getInventory().items)if(stack.is(item))count+=stack.getCount();return count;}
 }
