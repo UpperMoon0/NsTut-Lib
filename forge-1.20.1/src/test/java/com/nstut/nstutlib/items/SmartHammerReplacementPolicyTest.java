@@ -61,6 +61,18 @@ class SmartHammerReplacementPolicyTest {
         assertFalse(inspect(Blocks.PISTON_HEAD.defaultBlockState(),null,Set.of()).allowed());
         assertFalse(inspect(Blocks.CHEST.defaultBlockState(),null,Set.of()).allowed());
     }
+    @Test void quantityAndStoredResourceStatesFailClosed() {
+        var doubleSlab=Blocks.OAK_SLAB.defaultBlockState().setValue(
+                net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
+                net.minecraft.world.level.block.state.properties.SlabType.DOUBLE);
+        assertFalse(inspect(doubleSlab,null,Set.of()).allowed());
+        assertTrue(inspect(Blocks.OAK_SLAB.defaultBlockState(),null,Set.of()).allowed());
+        for(var block:new net.minecraft.world.level.block.Block[]{Blocks.CANDLE,Blocks.SEA_PICKLE,
+                Blocks.TURTLE_EGG,Blocks.SNOW,Blocks.CAKE,Blocks.RESPAWN_ANCHOR,Blocks.COMPOSTER}) {
+            assertTrue(SmartHammerReplacementPolicy.resourceBearingState(block.defaultBlockState()));
+            assertFalse(inspect(block.defaultBlockState(),null,Set.of()).allowed());
+        }
+    }
     private static SmartHammerRecovery inspect(net.minecraft.world.level.block.state.BlockState state,
             net.minecraft.world.level.block.entity.BlockEntity entity,Set<String> keys) {
         return SmartHammerReplacementPolicy.inspect(null,BlockPos.ZERO,state,entity,keys,null);

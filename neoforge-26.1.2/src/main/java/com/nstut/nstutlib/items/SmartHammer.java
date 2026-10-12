@@ -93,6 +93,9 @@ public class SmartHammer extends Item {
             BlockState current = level.getBlockState(target);
             if (MultiblockPattern.matchesBlock(expected, current, controllerState)) continue;
             BlockState desired = applyBlockStates(expected.getBlock().defaultBlockState(), rotateFacing(expected.getStates(), controllerFacing));
+            if (SmartHammerReplacementPolicy.resourceBearingState(desired)) {
+                blocked(player, desired, target, "unsupported resource-bearing pattern state"); return false;
+            }
             if (SmartHammerReplacementPolicy.protectedBlock(level, target, desired)) {
                 blocked(player, desired, target, "protected pattern block"); return false;
             }

@@ -143,6 +143,29 @@ public final class SmartHammerGameTests {
         helper.succeed();
     }
 
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
+    public static void resourceBearingReplacementAndCorrectionFailClosed(GameTestHelper helper) {
+        var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
+        level.setBlock(pos.below(),Blocks.STONE.defaultBlockState(),3);
+        var states=new BlockState[]{
+            Blocks.OAK_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.SlabBlock.TYPE,net.minecraft.world.level.block.state.properties.SlabType.DOUBLE),
+            Blocks.CANDLE.defaultBlockState().setValue(net.minecraft.world.level.block.CandleBlock.CANDLES,4),
+            Blocks.SEA_PICKLE.defaultBlockState().setValue(net.minecraft.world.level.block.SeaPickleBlock.PICKLES,4)};
+        for(var state:states) {
+            level.setBlock(pos,state,3);player.getInventory().clearContent();player.getInventory().add(new ItemStack(Items.BRICKS));
+            helper.assertTrue(!build(helper,player,pos,Blocks.BRICKS.defaultBlockState()),"Stored quantity blocks replacement");
+            var correction=new MultiblockBlock(state.getBlock(),java.util.Map.of(
+                    state.is(Blocks.OAK_SLAB)?"type":state.is(Blocks.CANDLE)?"candles":"pickles",state.is(Blocks.OAK_SLAB)?"bottom":"1"));
+            helper.assertTrue(!buildPattern(helper,player,pos,new MultiblockBlock[][][]{{{correction}}}),"Stored quantity blocks same-block reduction");
+            helper.assertTrue(level.getBlockState(pos).equals(state)&&count(player,Items.BRICKS)==1&&count(player,state.getBlock().asItem())==0,"World and inventory unchanged");
+        }
+        level.setBlock(pos,Blocks.OAK_SLAB.defaultBlockState(),3);
+        var doubleSlab=new MultiblockBlock(Blocks.OAK_SLAB,java.util.Map.of("type","double"));
+        helper.assertTrue(!buildPattern(helper,player,pos,new MultiblockBlock[][][]{{{doubleSlab}}}),"Same-block increase cannot create resources");
+        helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.SlabBlock.TYPE)!=net.minecraft.world.level.block.state.properties.SlabType.DOUBLE,"Single slab remains single");
+        helper.succeed();
+    }
+
     private static Player player(GameTestHelper helper){
         var player=FakePlayerFactory.getMinecraft(helper.getLevel());
         player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);player.getInventory().clearContent();player.getAbilities().mayBuild=true;player.getAbilities().instabuild=false;

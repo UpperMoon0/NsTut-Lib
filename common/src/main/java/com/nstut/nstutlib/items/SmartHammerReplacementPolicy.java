@@ -24,8 +24,24 @@ public final class SmartHammerReplacementPolicy {
                 || block == Blocks.END_PORTAL || block == Blocks.END_PORTAL_FRAME
                 || block == Blocks.END_GATEWAY || block == Blocks.MOVING_PISTON;
     }
+    /** States encoding stored resources are deliberately unsupported in either direction.
+     * A single block item cannot represent these quantities (or consumed food/charge).
+     * Check property names too so loader-specific and modded variants fail closed.
+     */
+    public static boolean resourceBearingState(BlockState state) {
+        if (state.getBlock() instanceof SlabBlock
+                && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE)
+                    == net.minecraft.world.level.block.state.properties.SlabType.DOUBLE) return true;
+        for (var property : state.getProperties()) {
+            if (property.getName().equals("level") && !(state.getBlock() instanceof LiquidBlock)) return true;
+            if (Set.of("candles", "pickles", "eggs", "layers", "bites", "charges", "honey_level",
+                    "flower_amount", "segment_amount", "dusted").contains(property.getName())) return true;
+        }
+        return false;
+    }
     public static SmartHammerRecovery inspect(Level level, BlockPos pos, BlockState state,
                                               BlockEntity entity, Set<String> savedKeys, Player player) {
+        if (resourceBearingState(state)) return SmartHammerRecovery.blocked("unsupported resource-bearing state");
         if (protectedBlock(level, pos, state)) return SmartHammerRecovery.blocked("protected block");
         if (entity != null) {
             if (entity instanceof SmartHammerRecoverable support) {
