@@ -146,7 +146,7 @@ public class SmartHammer extends Item {
             }
             var snapshot = net.neoforged.neoforge.common.util.BlockSnapshot.create(level.dimension(), level, placement.pos);
             if (!level.setBlock(placement.pos, placement.state, 3) || !MultiblockPattern.matchesBlock(placement.expected, level.getBlockState(placement.pos), controllerState)) {
-                boolean restored = snapshot.restore(true, false);
+                boolean restored = snapshot.restore(3);
                 if (consumed && restored) refundOne(player, placement.requiredItem);
                 notify(player, "Could not replace block at " + placement.pos.toShortString()); return false;
             }

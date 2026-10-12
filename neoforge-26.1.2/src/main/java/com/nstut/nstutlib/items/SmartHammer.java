@@ -137,7 +137,7 @@ public class SmartHammer extends Item {
             }
             var snapshot = net.neoforged.neoforge.common.util.BlockSnapshot.create(level.dimension(), level, placement.pos);
             if (!level.setBlock(placement.pos, placement.state, 3) || !MultiblockPattern.matchesBlock(placement.expected, level.getBlockState(placement.pos), controllerState)) {
-                boolean restored = snapshot.restore(true, false);
+                boolean restored = snapshot.restore(3);
                 if (consumed && restored) refundOne(player, placement.requiredItem);
                 notify(player, "Could not replace block at " + placement.pos.toShortString()); return false;
             }
@@ -158,7 +158,7 @@ public class SmartHammer extends Item {
     private static boolean allowedEdit(Level level, Player player, BlockPos pos, BlockState current, BlockState desired) {
         if (!player.getAbilities().mayBuild || !level.mayInteract(player, pos)) return false;
         if (!current.isAir()) {
-            var event = new net.neoforged.neoforge.event.level.BlockEvent.BreakEvent(level, pos, current, player);
+            var event = new net.neoforged.neoforge.event.level.block.BreakBlockEvent(level, pos, current, player);
             if (net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(event).isCanceled()) return false;
         }
         if (!desired.isAir()) {
