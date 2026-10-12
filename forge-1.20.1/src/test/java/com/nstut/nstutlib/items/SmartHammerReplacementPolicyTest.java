@@ -68,7 +68,8 @@ class SmartHammerReplacementPolicyTest {
         assertFalse(inspect(doubleSlab,null,Set.of()).allowed());
         assertTrue(inspect(Blocks.OAK_SLAB.defaultBlockState(),null,Set.of()).allowed());
         for(var block:new net.minecraft.world.level.block.Block[]{Blocks.CANDLE,Blocks.SEA_PICKLE,
-                Blocks.TURTLE_EGG,Blocks.SNOW,Blocks.CAKE,Blocks.RESPAWN_ANCHOR,Blocks.COMPOSTER}) {
+                Blocks.TURTLE_EGG,Blocks.SNOW,Blocks.CAKE,Blocks.RESPAWN_ANCHOR,Blocks.COMPOSTER,
+                Blocks.POTTED_POPPY,Blocks.CANDLE_CAKE}) {
             assertTrue(SmartHammerReplacementPolicy.resourceBearingState(block.defaultBlockState()));
             assertFalse(inspect(block.defaultBlockState(),null,Set.of()).allowed());
         }

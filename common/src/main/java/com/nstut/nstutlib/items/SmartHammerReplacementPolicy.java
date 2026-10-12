@@ -29,13 +29,15 @@ public final class SmartHammerReplacementPolicy {
      * Check property names too so loader-specific and modded variants fail closed.
      */
     public static boolean resourceBearingState(BlockState state) {
+        if ((state.getBlock() instanceof FlowerPotBlock && state.getBlock() != Blocks.FLOWER_POT)
+                || state.getBlock() instanceof CandleCakeBlock) return true;
         if (state.getBlock() instanceof SlabBlock
                 && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE)
                     == net.minecraft.world.level.block.state.properties.SlabType.DOUBLE) return true;
         for (var property : state.getProperties()) {
             if (property.getName().equals("level") && !(state.getBlock() instanceof LiquidBlock)) return true;
             if (Set.of("candles", "pickles", "eggs", "layers", "bites", "charges", "honey_level",
-                    "flower_amount", "segment_amount", "dusted").contains(property.getName())) return true;
+                    "flower_amount", "segment_amount", "dusted", "berries").contains(property.getName())) return true;
         }
         return false;
     }
@@ -68,8 +70,10 @@ public final class SmartHammerReplacementPolicy {
         if (state.hasBlockEntity()) return SmartHammerRecovery.blocked("missing block entity");
         if (state.getBlock() == Blocks.FARMLAND || state.getBlock() == Blocks.DIRT_PATH)
             return SmartHammerRecovery.ready(new ItemStack(Items.DIRT));
-        if (state.isAir() || state.getBlock().asItem() == Items.AIR)
+        if (state.isAir() || state.getBlock() instanceof LiquidBlock)
             return SmartHammerRecovery.ready(ItemStack.EMPTY);
+        if (state.getBlock().asItem() == Items.AIR)
+            return SmartHammerRecovery.blocked("no lossless single-item recovery");
         return SmartHammerRecovery.ready(new ItemStack(state.getBlock()));
     }
 }

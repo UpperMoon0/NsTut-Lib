@@ -17,7 +17,7 @@ class SmartHammerReplacementPolicyTest {
         // ModDev's 26.1 test launcher does not bind vanilla item components.
         // Match the existing repository fixtures for the plain items used here.
         for (var item : new net.minecraft.world.item.Item[] {
-                Items.GLASS, Items.STONE, Items.DIRT, Items.CHEST, Items.DIAMOND })
+                Items.GLASS, Items.STONE, Items.DIRT, Items.CHEST, Items.DIAMOND, Items.OAK_SLAB })
             item.builtInRegistryHolder().bindComponents(net.minecraft.core.component.DataComponents.COMMON_ITEM_COMPONENTS);
     }
 
@@ -74,7 +74,8 @@ class SmartHammerReplacementPolicyTest {
         assertFalse(inspect(doubleSlab,null,Set.of()).allowed());
         assertTrue(inspect(Blocks.OAK_SLAB.defaultBlockState(),null,Set.of()).allowed());
         for(var block:new net.minecraft.world.level.block.Block[]{Blocks.CANDLE,Blocks.SEA_PICKLE,
-                Blocks.TURTLE_EGG,Blocks.SNOW,Blocks.CAKE,Blocks.RESPAWN_ANCHOR,Blocks.COMPOSTER}) {
+                Blocks.TURTLE_EGG,Blocks.SNOW,Blocks.CAKE,Blocks.RESPAWN_ANCHOR,Blocks.COMPOSTER,
+                Blocks.POTTED_POPPY,Blocks.CANDLE_CAKE}) {
             assertTrue(SmartHammerReplacementPolicy.resourceBearingState(block.defaultBlockState()));
             assertFalse(inspect(block.defaultBlockState(),null,Set.of()).allowed());
         }
