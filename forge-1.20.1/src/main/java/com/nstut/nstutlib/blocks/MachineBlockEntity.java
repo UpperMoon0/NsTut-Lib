@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import java.util.function.UnaryOperator;
 
 public abstract class MachineBlockEntity extends BlockEntity implements MenuProvider, Multiblock {
     protected static final Logger LOGGER = Logger.getLogger(MachineBlockEntity.class.getName());
@@ -117,7 +118,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
         boolean previousStructureValid = blockEntity.isStructureValid;
         if (blockEntity.structureCheckCooldown <= 0) {
             blockEntity.isStructureValid = blockEntity.checkMultiblock(level, pos, state);
-            blockEntity.structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(blockEntity.hasActiveRecipe());
+            blockEntity.structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(blockEntity.hasActiveRecipe());
         } else {
             blockEntity.structureCheckCooldown--;
         }
@@ -131,13 +132,13 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                     blockEntity.processRecipe(level, pos);
                 } catch (RecipeTransactionCorruptedException exception) {
                     blockEntity.clearActiveRecipe();
-                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
+                    blockEntity.processingFailureCooldown = MachineProcessingPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.SEVERE,
                             "Machine transaction rollback failed at " + pos
                                     + "; active recipe was cancelled to prevent duplicate output or repeated consumption",
                             exception);
                 } catch (RecipeTransactionException exception) {
-                    blockEntity.processingFailureCooldown = MachineTickPolicy.PROCESSING_FAILURE_RETRY_TICKS;
+                    blockEntity.processingFailureCooldown = MachineProcessingPolicy.PROCESSING_FAILURE_RETRY_TICKS;
                     LOGGER.log(java.util.logging.Level.WARNING,
                             "Machine transaction failed safely at " + pos + "; preserving active recipe and retrying later",
                             exception);
@@ -202,6 +203,24 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                                                                            IEnergyStorage energyStorage,
                                                                            int energyPerTick,
                                                                            @Nullable Comparator<R> recipePreference) {
+        processRecipeTransaction(level, recipeType, inputSlots, inputTanks, outputSlots, outputTanks,
+                energyStorage, energyPerTick, recipePreference, null);
+    }
+
+    /**
+     * Variant that can replace the selected recipe with a transaction-local prepared copy before
+     * the active recipe snapshot is persisted or any ingredients are consumed.
+     */
+    protected final <R extends ModRecipe<R>> void processRecipeTransaction(Level level,
+                                                                           RecipeType<R> recipeType,
+                                                                           IItemHandler inputSlots,
+                                                                           List<? extends IFluidHandler> inputTanks,
+                                                                           IItemHandler outputSlots,
+                                                                           List<? extends IFluidHandler> outputTanks,
+                                                                           IEnergyStorage energyStorage,
+                                                                           int energyPerTick,
+                                                                           @Nullable Comparator<R> recipePreference,
+                                                                           @Nullable UnaryOperator<R> recipePreparation) {
         ModRecipe.requireRestorableStorage(inputSlots, inputTanks, "input");
         ModRecipe.requireRestorableStorage(outputSlots, outputTanks, "output");
         restoreRecipeHandler(level, recipeType);
@@ -225,8 +244,19 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
             if (nextRecipe.isEmpty()) {
                 return;
             }
-            startRecipe(nextRecipe.get());
-            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
+            R selectedRecipe = nextRecipe.get();
+            R preparedRecipe = recipePreparation == null ? selectedRecipe : recipePreparation.apply(selectedRecipe);
+            if (preparedRecipe == null) {
+                throw new IllegalArgumentException("Recipe preparation must not return null");
+            }
+            if (preparedRecipe.getType() != recipeType || !preparedRecipe.getId().equals(selectedRecipe.getId())) {
+                throw new IllegalArgumentException("Prepared recipe must preserve the selected recipe id and type");
+            }
+            if (!RecipePreflight.matchesInputs(preparedRecipe, inputSlots, inputTanks)) {
+                throw new IllegalArgumentException("Prepared recipe no longer matches the selected inputs");
+            }
+            startRecipe(preparedRecipe);
+            structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(true);
         }
 
         if (recipeHandler.get().getType() != recipeType) {
@@ -276,7 +306,7 @@ public abstract class MachineBlockEntity extends BlockEntity implements MenuProv
                 return;
             }
             isStructureValid = true;
-            structureCheckCooldown = MachineTickPolicy.nextStructureCheckCooldown(true);
+            structureCheckCooldown = MachineProcessingPolicy.nextStructureCheckCooldown(true);
             activeRecipe.assemble(outputSlots, outputTanks, activeItemOutputIndexes);
             clearActiveRecipe();
         }

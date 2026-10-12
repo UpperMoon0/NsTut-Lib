@@ -10,7 +10,11 @@ Shared Minecraft modding library used by NsTut projects.
 
 ## Machine API
 
+NsTut Lib owns the reusable **multiblock machine framework**: controller lifecycle, structure validation, generic item/fluid/energy processing, recipe transaction persistence, rollback/retry safety, probabilistic-output persistence, and generic operating state. Consumer mods own all domain semantics and machine-specific rules.
+
 `MachineBlockEntity.processRecipeTransaction` provides persisted transactional recipe processing. Active recipe identity, progress, selected probabilistic outputs, and input-consumed state survive reloads. Recoverable capability divergence is rolled back and retried with bounded backoff; rollback corruption cancels the transaction rather than risking duplication.
+
+The optional recipe-preparation callback runs after generic recipe selection/input preflight and before the transaction snapshot is persisted or inputs are consumed. It may derive a transaction-local recipe from the concrete inputs, but NsTut Lib does not define what that transformation means. Animal genetics, crop quality, loot-table behavior, or any other mod-specific semantics belong entirely to the consuming mod.
 
 Transactional item handlers must implement `IItemHandlerModifiable`. Transactional fluid handlers must be `FluidTank` instances or subclasses so snapshots can be restored atomically.
 
