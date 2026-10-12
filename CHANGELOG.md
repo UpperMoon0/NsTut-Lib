@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2
+
+- Add preflighted ordinary-block Smart Hammer replacement with exact supported item recovery and neighbor-aware placement.
+- Fail closed for resource-bearing/compound blocks and unsafe block entities; preserve the current recipe-preparation API.
+- See [the 0.8.2 release notes](CHANGELOG-0.8.2.md) for safety limits and validation.
+
 ## 0.8.1
 
 - Reworked machine recipe execution into a resumable transaction with persisted recipe identity, progress, and one-time input consumption.

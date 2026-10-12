@@ -6,3 +6,8 @@
 - Protect creative/operator infrastructure and all unbreakable blocks in every game mode. Unsupported entities, populated containers and unsafe multi-block structures report a blocker and stop preflight.
 - Support empty vanilla chests/barrels only when their saved data contains no names, locks, loot tables or extra payload. Add a read-only, default-deny `SmartHammerRecoverable` API for other empty entities.
 - Compile all three supported targets and add NeoForge policy tests plus Forge native replacement/permission/container/protected-block GameTests.
+
+- Reject quantity-bearing states and compound blocks instead of losing or creating their stored resources. Double slabs, candles/pickles, filled flower pots and candle cakes require manual recovery; both replacement and same-block quantity corrections fail closed.
+- Resolve neighbor-dependent placement states for fences/pipes and preserve exact water-bucket accounting.
+- Preserve the recipe-preparation API baseline required by current Biotech consumers.
+- Publish the changelog corresponding to the actual release version on GitHub and CurseForge.

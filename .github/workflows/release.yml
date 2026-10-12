@@ -43,6 +43,7 @@ jobs:
             printf 'Invalid mod_version: %q\n' "$version" >&2
             exit 1
           fi
+          test -s "CHANGELOG-${version}.md"
           expected="v${version}"
           should_release=false
 
@@ -166,7 +167,7 @@ jobs:
           CURSEFORGE_API_TOKEN: ${{ secrets.CURSEFORGE_API_TOKEN }}
           CURSEFORGE_PROJECT_ID: '1149915'
           MOD_VERSION: ${{ needs.release-gate.outputs.version }}
-          CHANGELOG_PATH: CHANGELOG-0.8.1.md
+          CHANGELOG_PATH: CHANGELOG-${{ needs.release-gate.outputs.version }}.md
           JAR_PATH: ${{ steps.release_file.outputs.jar_path }}
           MINECRAFT_VERSION: ${{ matrix.minecraft }}
           LOADER_NAME: ${{ matrix.loader_name }}
@@ -210,6 +211,6 @@ jobs:
         with:
           tag_name: v${{ needs.release-gate.outputs.version }}
           name: NsTut Lib v${{ needs.release-gate.outputs.version }}
-          body_path: CHANGELOG-0.8.1.md
+          body_path: CHANGELOG-${{ needs.release-gate.outputs.version }}.md
           fail_on_unmatched_files: true
           files: artifacts/**/*.jar
