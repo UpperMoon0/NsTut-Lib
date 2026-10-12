@@ -10,6 +10,17 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SmartHammerReplacementPolicyTest {
+    @org.junit.jupiter.api.BeforeAll
+    static void bootstrapMinecraftRegistries() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
+        // ModDev's 26.1 test launcher does not bind vanilla item components.
+        // Match the existing repository fixtures for the plain items used here.
+        for (var item : new net.minecraft.world.item.Item[] {
+                Items.GLASS, Items.STONE, Items.DIRT, Items.CHEST, Items.DIAMOND })
+            item.builtInRegistryHolder().bindComponents(net.minecraft.core.component.DataComponents.COMMON_ITEM_COMPONENTS);
+    }
+
     @Test void recoversGlassAndStoneAsBlocksAndFarmlandAsDirt() {
         assertTrue(inspect(Blocks.GLASS.defaultBlockState(),null,Set.of()).item().is(Items.GLASS));
         assertTrue(inspect(Blocks.STONE.defaultBlockState(),null,Set.of()).item().is(Items.STONE));

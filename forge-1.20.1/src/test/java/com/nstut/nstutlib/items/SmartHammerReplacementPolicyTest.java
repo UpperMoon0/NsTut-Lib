@@ -10,6 +10,12 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SmartHammerReplacementPolicyTest {
+    @org.junit.jupiter.api.BeforeAll
+    static void bootstrapMinecraftRegistries() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
+    }
+
     @Test void recoversGlassAndStoneAsBlocksAndFarmlandAsDirt() {
         assertTrue(inspect(Blocks.GLASS.defaultBlockState(),null,Set.of()).item().is(Items.GLASS));
         assertTrue(inspect(Blocks.STONE.defaultBlockState(),null,Set.of()).item().is(Items.STONE));
