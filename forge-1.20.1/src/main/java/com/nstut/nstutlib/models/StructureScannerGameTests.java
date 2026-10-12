@@ -15,7 +15,7 @@ public final class StructureScannerGameTests {
     private StructureScannerGameTests() {
     }
 
-    @GameTest(templateNamespace = "forge", template = "empty3x3x3", timeoutTicks = 100)
+    @GameTest(templateNamespace = NsTutLib.MOD_ID, template = "empty3x3x3", timeoutTicks = 100)
     public static void leafDistanceIsRuntimeManaged(GameTestHelper helper) {
         Map<String, String> leaves = StructureScannerStateFilter.exportStates(Blocks.OAK_LEAVES.defaultBlockState());
         helper.assertTrue(!leaves.containsKey("distance"),

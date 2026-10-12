@@ -23,7 +23,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class SmartHammerGameTests {
     private SmartHammerGameTests() {}
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void replacesAndClearsWithExactRecovery(GameTestHelper helper) {
         var player=player(helper);
         var pos=helper.absolutePos(new BlockPos(1,1,1));
@@ -36,7 +36,7 @@ public final class SmartHammerGameTests {
         helper.assertTrue(helper.getLevel().getBlockState(pos).isAir()&&count(player,Items.BRICKS)==1,"Cleared block is recovered");
         helper.succeed();
     }
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void noPartialBuildOnMissingMaterialsOrUnsupportedEntity(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var next=pos.east();
         var level=helper.getLevel();
@@ -50,7 +50,7 @@ public final class SmartHammerGameTests {
         helper.assertTrue(level.getBlockState(pos).is(Blocks.STONE)&&level.getBlockState(next).is(Blocks.FURNACE)&&count(player,Items.BRICKS)==2,"Blocked entity and prior normal cell are untouched");
         helper.succeed();
     }
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void supportedEmptyContainerAndPopulatedContainer(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
         level.setBlock(pos,Blocks.CHEST.defaultBlockState(),3);player.getInventory().add(new ItemStack(Items.BRICKS));
@@ -63,7 +63,7 @@ public final class SmartHammerGameTests {
         helper.assertTrue(level.getBlockEntity(pos)==chest&&chest.getItem(0).getCount()==3&&count(player,Items.BRICKS)==1,"Chest identity and stored diamonds remain intact");
         helper.succeed();
     }
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void protectedBlocksStayUntouchedEvenInCreative(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
         for(boolean creative:new boolean[]{false,true}){
@@ -77,7 +77,7 @@ public final class SmartHammerGameTests {
         }
         ((net.minecraft.server.level.ServerPlayer)player).setGameMode(net.minecraft.world.level.GameType.SURVIVAL);helper.succeed();
     }
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void respectsBreakAndPlacementCancellationBeforeMutation(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
         level.setBlock(pos,Blocks.STONE.defaultBlockState(),3);player.getInventory().add(new ItemStack(Items.BRICKS));
@@ -102,7 +102,7 @@ public final class SmartHammerGameTests {
         helper.succeed();
     }
 
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void customMaterialDataIsNotDiscardedAndStateCorrectionsReuseBlocks(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
         level.setBlock(pos,Blocks.GLASS.defaultBlockState(),3);
@@ -117,7 +117,7 @@ public final class SmartHammerGameTests {
         helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.NORTH&&count(player,Items.OAK_STAIRS)==0,"State changed without a duplicate refund");
         helper.succeed();
     }
-    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void fullInventoryReceivesVisibleRecoveryDrop(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
         for(int i=0;i<player.getInventory().items.size();i++)player.getInventory().setItem(i,new ItemStack(Items.DIRT,64));

@@ -20,7 +20,7 @@ import java.util.List;
 public final class ModRecipeGameTests {
     private ModRecipeGameTests() {}
 
-    @GameTest(templateNamespace = "forge", template = "empty3x3x3", timeoutTicks = 100)
+    @GameTest(templateNamespace = NsTutLib.MOD_ID, template = "empty3x3x3", timeoutTicks = 100)
     public static void transactionRollbackAndRetry(GameTestHelper helper) {
         TestRecipe recipe = recipe(new IngredientItem[0],
                 new OutputItem[] {new OutputItem(new ItemStack(Items.DIAMOND, 65), 1.0f)},
@@ -43,7 +43,7 @@ public final class ModRecipeGameTests {
         helper.succeed();
     }
 
-    @GameTest(templateNamespace = "forge", template = "empty3x3x3", timeoutTicks = 100)
+    @GameTest(templateNamespace = NsTutLib.MOD_ID, template = "empty3x3x3", timeoutTicks = 100)
     public static void fluidAndIngredientRollback(GameTestHelper helper) {
         TestRecipe fluidRecipe = recipe(new IngredientItem[0], new OutputItem[0], new FluidStack[0],
                 new FluidStack[] {new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1500)});
@@ -68,7 +68,7 @@ public final class ModRecipeGameTests {
         helper.succeed();
     }
 
-    @GameTest(templateNamespace = "forge", template = "empty3x3x3", timeoutTicks = 100)
+    @GameTest(templateNamespace = NsTutLib.MOD_ID, template = "empty3x3x3", timeoutTicks = 100)
     public static void persistedChanceAndRollbackCorruption(GameTestHelper helper) {
         TestRecipe chanceRecipe = recipe(new IngredientItem[0],
                 new OutputItem[] {
