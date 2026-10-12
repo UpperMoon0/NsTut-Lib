@@ -101,6 +101,35 @@ public final class SmartHammerGameTests {
         helper.assertTrue(level.getBlockState(pos).is(Blocks.STONE)&&count(player,Items.BRICKS)==1&&count(player,Items.STONE)==0,"No edits, consumption or refund from cancelled plans");
         helper.succeed();
     }
+
+    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    public static void customMaterialDataIsNotDiscardedAndStateCorrectionsReuseBlocks(GameTestHelper helper) {
+        var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
+        level.setBlock(pos,Blocks.GLASS.defaultBlockState(),3);
+        var named=new ItemStack(Items.BRICKS);named.setHoverName(net.minecraft.network.chat.Component.literal("Keep this name"));
+        player.getInventory().add(named);
+        helper.assertTrue(!build(helper,player,pos,Blocks.BRICKS.defaultBlockState()),"Custom material data must not be silently discarded");
+        helper.assertTrue(level.getBlockState(pos).is(Blocks.GLASS)&&count(player,Items.BRICKS)==1&&count(player,Items.GLASS)==0,"Named material and world remain unchanged");
+        player.getInventory().clearContent();
+        level.setBlock(pos,Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.StairBlock.FACING,Direction.EAST),3);
+        var block=new MultiblockBlock(Blocks.OAK_STAIRS,java.util.Map.of("facing","north"));
+        helper.assertTrue(buildPattern(helper,player,pos,new MultiblockBlock[][][]{{{block}}}),"Same-block state corrections need no new material");
+        helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.NORTH&&count(player,Items.OAK_STAIRS)==0,"State changed without a duplicate refund");
+        helper.succeed();
+    }
+    @GameTest(templateNamespace="forge",template="empty3x3x3",timeoutTicks=100)
+    public static void fullInventoryReceivesVisibleRecoveryDrop(GameTestHelper helper) {
+        var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
+        for(int i=0;i<player.getInventory().items.size();i++)player.getInventory().setItem(i,new ItemStack(Items.DIRT,64));
+        var box=player.getBoundingBox().inflate(3);
+        int before=level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,box,e->e.getItem().is(Items.STONE)).stream().mapToInt(e->e.getItem().getCount()).sum();
+        level.setBlock(pos,Blocks.STONE.defaultBlockState(),3);
+        helper.assertTrue(build(helper,player,pos,Blocks.AIR.defaultBlockState()),"Air clearing works with a full inventory");
+        int after=level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,box,e->e.getItem().is(Items.STONE)).stream().mapToInt(e->e.getItem().getCount()).sum();
+        helper.assertTrue(count(player,Items.STONE)==0&&after-before==1,"Exactly one recovered block drops visibly at the player's feet");
+        helper.succeed();
+    }
+
     private static Player player(GameTestHelper helper){
         var player=FakePlayerFactory.getMinecraft(helper.getLevel());
         player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);player.getInventory().clearContent();player.getAbilities().mayBuild=true;player.getAbilities().instabuild=false;

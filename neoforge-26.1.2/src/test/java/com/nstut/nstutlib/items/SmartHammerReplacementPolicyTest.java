@@ -38,7 +38,8 @@ class SmartHammerReplacementPolicyTest {
     @Test void supportedEntityCanVetoAndRecoveryPayloadIsCopied() {
         var state=Blocks.CHEST.defaultBlockState();
         var chest=new SupportedChest(state);
-        assertTrue(inspect(state,chest,Set.of()).allowed());
+        var decision=inspect(state,chest,Set.of());
+        assertTrue(decision.allowed(),decision.blocker());
         chest.setItem(0,new ItemStack(Items.DIAMOND));
         assertFalse(inspect(state,chest,Set.of()).allowed());
         var source=new ItemStack(Items.CHEST);
