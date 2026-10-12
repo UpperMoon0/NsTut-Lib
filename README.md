@@ -35,7 +35,7 @@ Network protocol compatibility is strict. Multiblock validation honors authored 
 
 ## Smart Hammer replacement
 
-Shift-use the Smart Hammer on a machine controller to fill or replace its current pattern from inventory. Ordinary single-cell blocks are recovered as block items; required air spaces are cleared without an inventory material. Matching cells are left alone, and same-block state corrections do not consume/refund an extra block.
+Shift-use the Smart Hammer on a machine controller to fill or replace its current pattern from inventory. Ordinary single-cell blocks are recovered as block items; required air spaces are cleared without an inventory material. Matching cells are left alone, and supported same-block state corrections do not consume/refund an extra block. Quantity-bearing states (double slabs, stacked candles/pickles, etc.), compound blocks (filled pots/candle cakes) and ordinary blocks without a lossless item recovery are blocked rather than losing or creating resources.
 
 Bedrock, command blocks, barriers, light blocks, structure/jigsaw blocks, portal infrastructure, unbreakable blocks and other protected targets are never overwritten, even in creative mode. Unsupported block entities and multi-block structures stop the entire preflight with `Blocked by <block> at <position>: <reason>`.
 

@@ -4,9 +4,11 @@ Shift-use the hammer on a machine controller. The controller is retained and the
 
 ## Ordinary blocks and materials
 
-The hammer skips matching cells, replaces ordinary single-cell blocks from inventory, and returns each removed block item exactly once. Glass and stone are recovered as their block items rather than mined drops. Farmland/path recover dirt. Non-item replaceable states such as air/water have no invented recovery item; no filled water bucket is minted from world fluid. New water consumes a plain water bucket and returns an empty bucket.
+The hammer skips matching cells, replaces ordinary single-cell blocks from inventory, and returns each removed block item exactly once. Glass and stone are recovered as their block items rather than mined drops. Farmland/path recover dirt. Air and liquid states such as water have no invented recovery item; no filled water bucket is minted from world fluid. New water consumes a plain water bucket and returns an empty bucket.
 
 Neighbour-dependent states are resolved against the live world before each placement. Fence, pipe and stair connection updates can adjust earlier placements without extra material consumption. Matching verifies the authored pattern requirements rather than unspecified default connection properties.
+
+Resource-bearing and compound states fail closed: double slabs, candles, sea pickles, eggs, snow layers, cake/candle cake, filled flower pots, stored charges, compost and similar state-encoded quantities are not replaced or synthesized. This applies to same-block quantity corrections too; remove these manually first. Ordinary non-liquid states without a recoverable block item are unsupported.
 
 Required air cells consume no material. Same-block state corrections reuse the existing block without an extra item/refund. New material stacks must match a plain stack of that item: a renamed/component-bearing storage item is never silently consumed while its data is discarded.
 
@@ -41,3 +43,5 @@ Existing consumer hatches/machines do not become supported automatically. They m
 ## Validation
 
 The PR adds native Forge build/refund/required-air tests, no-partial-preflight tests, real empty/populated chest checks, creative protection checks and break/place cancellation tests. All three targets compile the same shared policy/API; NeoForge unit tests exercise ordinary block recovery, protected infrastructure, saved-data/container rejection, explicit support and defensive recovery copies.
+
+Native regressions cover quantity replacement and same-block reduction/increase. Biotech integration GameTests exercise slab/candle/pickle rejection, compound blocks and exact water-bucket consumption on Forge 1.20.1, NeoForge 1.21.1 and NeoForge 26.1.2.
