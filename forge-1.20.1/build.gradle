@@ -66,3 +66,22 @@ publishing {
     }
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+
+// A successful empty GameTest server is not verification. Enforce actual discovery.
+tasks.named('runGameTestServer').configure {
+    doFirst { delete file('run/logs/latest.log') }
+    doLast {
+        def logFile = file('run/logs/latest.log')
+        if (!logFile.isFile()) throw new GradleException('Missing Forge GameTest log')
+        def text = logFile.getText('UTF-8')
+        def summary = text =~ /All (\d+) required tests passed/
+        int expected = fileTree('src/main/java').matching { include '**/*GameTests.java' }.files.sum {
+            (it.getText('UTF-8') =~ /@GameTest\s*\(/).count
+        } as int
+        if (!summary.find() || Integer.parseInt(summary.group(1)) < expected || expected < 7)
+            throw new GradleException("Forge GameTest discovery/completion failed; expected at least ${expected} required tests")
+        if (!text.contains('Game test server shutting down'))
+            throw new GradleException('Forge GameTest server did not shut down normally')
+    }
+}
