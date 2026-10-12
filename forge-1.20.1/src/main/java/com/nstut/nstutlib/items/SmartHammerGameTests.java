@@ -133,10 +133,10 @@ public final class SmartHammerGameTests {
     @GameTest(templateNamespace=NsTutLib.MOD_ID,template="empty3x3x3",timeoutTicks=100)
     public static void resolvesNeighbourStatesForNewAndExistingFences(GameTestHelper helper) {
         var player=player(helper);var pos=helper.absolutePos(new BlockPos(1,1,1));var level=helper.getLevel();
-        level.setBlock(pos.west(),Blocks.OAK_FENCE.defaultBlockState(),3);
+        level.setBlock(pos.north(),Blocks.OAK_FENCE.defaultBlockState(),3);
         player.getInventory().add(new ItemStack(Items.OAK_FENCE,2));
         helper.assertTrue(buildTwo(helper,player,pos,Blocks.OAK_FENCE.defaultBlockState()),"Hammer builds connected fence cells");
-        helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.FenceBlock.WEST)
+        helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.FenceBlock.NORTH)
                 &&level.getBlockState(pos).getValue(net.minecraft.world.level.block.FenceBlock.EAST)
                 &&level.getBlockState(pos.east()).getValue(net.minecraft.world.level.block.FenceBlock.WEST),"Every placed cell has reciprocal connections");
         helper.assertTrue(count(player,Items.OAK_FENCE)==0,"Only the two missing blocks are consumed");
